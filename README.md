@@ -5,7 +5,7 @@
 > [!WARNING]
 > This library is currently under active development. The API may change at any time. Use at your own risk. Please report any issues or feature requests on the issues page.
 
-`mono-jsx-dom` is a JSX runtime that renders web UI with browser-specific APIs.
+`mono-jsx-dom` is a JSX runtime that renders web UIs using browser-specific APIs.
 
 - ⚡️ Use browser-specific APIs, no virtual DOM
 - 🦋 Lightweight (4KB gzipped), zero dependencies
@@ -36,20 +36,17 @@ To use mono-jsx-dom as your JSX runtime, add the following configuration to your
 }
 ```
 
-You can also run `mono-jsx-dom setup` to automatically add the configuration to your project:
+You can also run the `mono-jsx-dom setup` command to set up the environment for `mono-jsx-dom`:
 
 ```bash
-# Node.js, Cloudflare Workers, or other node-compatible runtimes
+# npm
 npx mono-jsx-dom setup
 
-# Deno
-deno run -A npm:mono-jsx-dom setup
-
-# Bun
-bunx mono-jsx-dom setup
+# bun
+bunx --bun mono-jsx-dom setup
 ```
 
-You can also use the `@jsxImportSource` pragma directive to use `mono-jsx-dom` as your JSX runtime:
+Or use the `@jsxImportSource` pragma directive to use `mono-jsx-dom` as your JSX runtime:
 
 ```tsx
 /** @jsxImportSource mono-jsx-dom */
@@ -73,14 +70,14 @@ function App(this: FC) {
 document.body.mount(<App />);
 ```
 
-To run the app built with mono-jsx-dom in the browser, you need a TSX transformer to transform the TSX code to JavaScript code. For example, you can use [esbuild](https://esbuild.github.io) to transform the TSX code to JavaScript code:
+To run an app built with `mono-jsx-dom` in the browser, you need a TSX transformer to compile the TSX code to JavaScript. For example, you can use [esbuild](https://esbuild.github.io):
 
 ```bash
-bunx esbuild --bundle --jsx=automatic --jsx-import-source=mono-jsx-dom --platfrom=browser --format=esm --target=es2022 --outfile=app.js app.tsx
+bunx esbuild --bundle --jsx=automatic --jsx-import-source=mono-jsx-dom --platform=browser --format=esm --target=es2022 --outfile=app.js app.tsx
 ```
 
 >[!TIP]
-> `mono-jsx-dom` is designed for client-side rendering, you can use [mono-jsx](https://github.com/ije/mono-jsx) to render the UI on the server side.
+> `mono-jsx-dom` is designed for client-side rendering. You can use [mono-jsx](https://github.com/ije/mono-jsx) to render the UI on the server side.
 
 ## Using JSX
 
@@ -108,9 +105,9 @@ mono-jsx-dom allows you to compose the `class` property using arrays of strings,
 />;
 ```
 
-### Using Pseudo Classes and Media Queries in `style`
+### Using Pseudo-Classes and Media Queries in `style`
 
-mono-jsx-dom supports [pseudo classes](https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes), [pseudo elements](https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-elements), [media queries](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_media_queries/Using_media_queries), and [CSS nesting](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_nesting/Using_CSS_nesting) in the `style` property:
+mono-jsx-dom supports [pseudo-classes](https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes), [pseudo-elements](https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-elements), [media queries](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_media_queries/Using_media_queries), and [CSS nesting](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_nesting/Using_CSS_nesting) in the `style` property:
 
 ```tsx
 <a
@@ -161,7 +158,7 @@ function App(this: FC<{ show: boolean }>) {
 }
 ```
 
-You can also set the `viewTransition` prop a html element which contains signal children.
+You can also set the `viewTransition` prop on an HTML element that contains signal children.
 
 ```tsx
 function App(this: FC<{ message: string }>) {
@@ -172,7 +169,7 @@ function App(this: FC<{ message: string }>) {
 }
 ```
 
-You can also set the view transition name in the style property with the `viewTransition` prop set to `true`.
+You can also set the view transition name in the `style` property by setting the `viewTransition` prop to `true`.
 
 ```tsx
 function App(this: FC<{ message: string }>) {
@@ -278,7 +275,7 @@ function App() {
 
 ## Async Components
 
-mono-jsx-dom supports async components that return a `Promise` or an async function. With streaming rendering, async components are rendered asynchronously, allowing you to fetch data or perform other async operations before rendering the component.
+mono-jsx-dom supports async components that return a `Promise` or are declared as async functions. With streaming rendering, async components are rendered asynchronously, allowing you to fetch data or perform other async operations before rendering the component.
 
 ```tsx
 async function JsonViewer(props: { url: string }) {
@@ -347,7 +344,7 @@ document.body.mount(<App />);
 
 ## Error Handling
 
-You can add the `catch` prop when using a function component. This allows you to catch errors in components and display a fallback UI:
+You can add the `catch` prop to a function component. This allows you to catch errors in components and display a fallback UI:
 
 ```tsx
 async function Hello() {
@@ -369,11 +366,11 @@ The `catch` prop should be a function that gets the caught error as the first ar
 
 ## Using Signals
 
-mono-jsx-dom uses signals for updating the view when a signal changes. Signals are similar to React's state, but they are more lightweight and efficient. You can use signals to manage state in your components.
+mono-jsx-dom uses signals to update the view when a signal changes. Signals are similar to React's state, but they are lighter-weight and more efficient. You can use signals to manage state in your components.
 
 ### Using Component Signals
 
-You can use the `this` keyword in your components to manage signals. Signals are bound to the component instance, can be updated directly, and the view will automatically re-render when a signal changes:
+You can use the `this` keyword in your components to manage signals. Signals are bound to the component instance, can be updated directly, and automatically re-render the view when they change:
 
 ```tsx
 function Counter(this: FC<{ count: number }>, props: { initialCount?: number }) {
@@ -396,7 +393,7 @@ function Counter(this: FC<{ count: number }>, props: { initialCount?: number }) 
 }
 ```
 
-You can use `this.extend` to create an extended signals object. You can use getters to create derived(computed) signals.
+You can use `this.extend` to create an extended signals object. You can use getters to create derived (computed) signals.
 
 ```tsx
 function App(this: FC<{ count: number }>) {
@@ -420,10 +417,10 @@ function App(this: FC<{ count: number }>) {
 
 ### Using `atom` and `store`
 
-mono-jsx-dom provides two functions to allows you to define global shared signals. You can use them to share signals between components.
+mono-jsx-dom provides two functions that allow you to define shared global signals. You can use them to share signals between components.
 
 - `atom(initValue)`: Creates an atom signal.
-- `store(initValue)`: Creates a signals.
+- `store(initValue)`: Creates a signal store.
 
 ```ts
 export interface Atom<T> {
@@ -497,7 +494,7 @@ function App(this: FC<{ input: string }>) {
 
 ### Using Effect
 
-You can use `this.effect` to perform side effects in components. The effect will run when the component is mounted and automatically collect used signals as dependencies, and re-run when the dependencies change.
+You can use `this.effect` to perform side effects in components. The effect runs when the component is mounted, automatically collects used signals as dependencies, and reruns when those dependencies change.
 
 ```tsx
 function App(this: FC<{ count: number }>) {
@@ -516,7 +513,7 @@ function App(this: FC<{ count: number }>) {
 }
 ```
 
-The callback function of `this.effect` can return a cleanup function that gets run once the component element has been removed via `<show>`, `<hidden>` or `<switch>` conditional rendering:
+The callback function of `this.effect` can return a cleanup function that runs once the component's element has been removed through `<show>`, `<hidden>`, or `<switch>` conditional rendering:
 
 ```tsx
 function Counter(this: FC<{ count: number }>) {
@@ -587,7 +584,7 @@ function App(this: FC<{ hidden: boolean }>) {
 }
 ```
 
-If you need `if-else` logic in JSX, use `<switch>` element instead:
+If you need `if-else` logic in JSX, use the `<switch>` element instead:
 
 ```tsx
 function App(this: FC<{ ok: boolean }>) {
@@ -629,7 +626,7 @@ function App(this: FC<{ lang: "en" | "zh" | "🙂" }>) {
 
 ### Form Input Two-way Binding
 
-You can use the `$value` prop to bind a signal to the value of a form input element. The `$value` prop is a two-way data binding, which means that when the input value changes, the signal will be updated, and when the signal changes, the input value will be updated.
+You can use the `$value` prop to bind a signal to the value of a form input element. The `$value` prop provides two-way data binding, which means that when the input value changes, the signal is updated, and when the signal changes, the input value is updated.
 
 ```tsx
 function App(this: FC<{ value: string }>) {
@@ -642,7 +639,7 @@ function App(this: FC<{ value: string }>) {
 }
 ```
 
-You can also use the `$checked` prop to bind a signal to the checked state of a checkbox or radio input element.
+You can also use the `$checked` prop to bind a signal to the checked state of a checkbox or radio input.
 
 ```tsx
 function App(this: FC<{ checked: boolean }>) {
@@ -714,7 +711,7 @@ function App(this: FC) {
 
 ## Using `this` in Components
 
-mono-jsx-dom binds a scoped signals object to `this` of your component functions. This allows you to access signals, context, and request information directly in your components.
+mono-jsx-dom binds a scoped signals object to `this` in your component functions. This allows you to access signals, context, and request information directly in your components.
 
 The `this` object has the following built-in properties:
 
@@ -722,7 +719,7 @@ The `this` object has the following built-in properties:
 - `init(initValue)`: Initializes the signals.
 - `refs`: A map of refs defined in the component.
 - `computed(fn)`: A method to create a computed signal.
-- `$(fn)`:  A shortcut for `computed(fn)`.
+- `$(fn)`: A shortcut for `computed(fn)`.
 - `effect(fn)`: A method to create side effects.
 
 ```ts
