@@ -1,0 +1,46 @@
+{
+  "name": "mono-jsx-dom",
+  "version": "0.1.0",
+  "description": "`<html>` as a `Response`.",
+  "keywords": [
+    "jsx",
+    "UI",
+    "CSR"
+  ],
+  "type": "module",
+  "module": "./index.mjs",
+  "types": "./types/index.d.ts",
+  "bin": {
+    "mono-jsx-dom": "bin/mono-jsx-dom"
+  },
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "node": "./index.mjs",
+      "import": "./index.mjs"
+    },
+    "./jsx-runtime": {
+      "types": "./types/jsx-runtime.d.ts",
+      "node": "./jsx-runtime.mjs",
+      "import": "./jsx-runtime.mjs"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./types/jsx-runtime.d.ts",
+      "node": "./jsx-runtime.mjs",
+      "import": "./jsx-runtime.mjs"
+    }
+  },
+  "scripts": {
+    "prepublishOnly": "deno task build"
+  },
+  "files": [
+    "./*.mjs",
+    "./types/*.d.ts"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ije/mono-jsx-dom.git"
+  },
+  "author": "Je Xia <i@jex.me>",
+  "license": "MIT"
+}

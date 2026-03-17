@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext",
+      "deno.ns"
+    ],
+    "jsx": "react-jsx",
+    "jsxImportSource": "mono-jsx-dom"
+  },
+  "nodeModulesDir": "none",
+  "imports": {
+    "mono-jsx-dom/jsx-runtime": "./jsx-runtime.ts"
+  },
+  "tasks": {
+    "build": "deno run -A --no-lock build.ts",
+    "test": "deno task build && deno test -A --no-lock test/",
+    "fmt": "dprint fmt"
+  },
+  "lint": {
+    "exclude": [
+      "**/*.mjs"
+    ],
+    "rules": {
+      "exclude": [
+        "ban-ts-comment",
+        "ban-types",
+        "jsx-curly-braces",
+        "jsx-key",
+        "no-import-prefix",
+        "no-empty-interface",
+        "no-explicit-any",
+        "no-slow-types",
+        "no-this-alias",
+        "no-window",
+        "prefer-const"
+      ]
+    }
+  }
+}

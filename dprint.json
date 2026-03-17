@@ -1,0 +1,18 @@
+{
+  "indentWidth": 2,
+  "lineWidth": 140,
+  "typescript": {
+    "quoteStyle": "preferDouble",
+    "module.sortImportDeclarations": "maintain"
+  },
+  "includes": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "excludes": [
+    "runtime/index.ts"
+  ],
+  "plugins": [
+    "https://plugins.dprint.dev/typescript-0.95.15.wasm"
+  ]
+}
