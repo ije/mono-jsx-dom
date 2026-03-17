@@ -1,11 +1,11 @@
 # 🔥 mono-jsx-dom
 
-![`<html>` as a `Response`](./.github/og-image.png)
+![mono-jsx-dom](./.github/og-image.png)
 
 > [!WARNING]
 > This library is currently under active development. The API may change at any time. Use at your own risk. Please report any issues or feature requests on the issues page.
 
-`mono-jsx-dom` is a JSX runtime that renders web UIs using browser-specific APIs.
+`mono-jsx-dom` is a JSX runtime for building web user interface.
 
 - ⚡️ Use browser-specific APIs, no virtual DOM
 - 🦋 Lightweight (4KB gzipped), zero dependencies
