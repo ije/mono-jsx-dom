@@ -1,4 +1,4 @@
-import { ChildPrimitiveType } from "./jsx.d.ts";
+import type { ChildPrimitiveType } from "./jsx.d.ts";
 
 export interface Atom<T> {
   get(): T;
