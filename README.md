@@ -757,3 +757,7 @@ function App(this: WithRefs<FC, { input?: HTMLInputElement }>) {
   )
 }
 ```
+
+## License
+
+MIT
