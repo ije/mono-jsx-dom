@@ -18,7 +18,7 @@ Playground: https://val.town/x/ije/mono-jsx-dom
 ## Installation
 
 ```bash
-npm install mono-jsx
+npm install mono-jsx-dom
 ```
 
 ## Setup JSX Runtime

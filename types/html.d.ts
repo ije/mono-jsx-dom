@@ -129,7 +129,7 @@ export namespace HTML {
   interface GlobalAttributes<T extends EventTarget> extends EventAttributes<T>, Aria.Attributes, Jsx.BaseAttributes, JSX.CustomAttributes {
     /**
      * A reference to the element.
-     * @mono-jsx
+     * @mono-jsx-dom
      */
     ref?: HTMLElement | ((el: T) => unknown);
     /** Defines a unique identifier (ID) which must be unique in the whole document. Its purpose is to identify the element when linking (using a fragment identifier), scripting, or styling (with CSS). */
@@ -192,7 +192,7 @@ export namespace HTML {
     /**
      * Enables view transition for the element.
      * @see https://developer.mozilla.org/en-US/docs/Web/API/View_Transitions_API
-     * @mono-jsx
+     * @mono-jsx-dom
      */
     viewTransition?: string | boolean;
   }
@@ -214,7 +214,7 @@ export namespace HTML {
   interface NavAttributes<T extends EventTarget> extends GlobalAttributes<T> {
     /**
      * This attribute is used to specify the class name for the active link.
-     * @mono-jsx
+     * @mono-jsx-dom
      */
     "data-active-class"?: string;
   }
@@ -236,7 +236,7 @@ export namespace HTML {
 
   interface FormAttributes<T extends EventTarget> extends GlobalAttributes<T> {
     "accept-charset"?: string;
-    action?: string | (/* @mono-jsx */ (data: FormData, event: SubmitEvent) => unknown | Promise<unknown>);
+    action?: string | (/* @mono-jsx-dom-dom */ (data: FormData, event: SubmitEvent) => unknown | Promise<unknown>);
     autoComplete?: "on" | "off";
     encType?: "application/x-www-form-urlencoded" | "multipart/form-data" | "text/plain";
     method?: "GET" | "POST" | "dialog";
@@ -248,7 +248,7 @@ export namespace HTML {
     onFormData?: EventHandler<Event, T>;
     /**
      * Delegate to the router to handle the form submission
-     * @mono-jsx
+     * @mono-jsx-dom
      */
     route?: boolean;
   }
@@ -301,12 +301,12 @@ export namespace HTML {
     onSearch?: EventHandler<Event, T>;
     /**
      * Two-way binding prop that automatically creates checked and oninput attributes for signal binding
-     * @mono-jsx
+     * @mono-jsx-dom
      */
     $checked?: Jsx.MaybeGetter<boolean>;
     /**
      * Two-way binding prop that automatically creates value and oninput attributes for signal binding
-     * @mono-jsx
+     * @mono-jsx-dom
      */
     $value?: Jsx.MaybeGetter<string | number>;
   }
@@ -329,7 +329,7 @@ export namespace HTML {
     value?: string | number;
     /**
      * Two-way binding prop that automatically creates value and oninput attributes for signal binding
-     * @mono-jsx
+     * @mono-jsx-dom
      */
     $value?: Jsx.MaybeGetter<string | number>;
   }
@@ -352,7 +352,7 @@ export namespace HTML {
     onChange?: EventHandler<Event, T>;
     /**
      * Two-way binding prop that automatically creates value and oninput attributes for signal binding
-     * @mono-jsx
+     * @mono-jsx-dom
      */
     $value?: Jsx.MaybeGetter<string>;
   }

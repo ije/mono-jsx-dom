@@ -22,7 +22,7 @@ declare global {
     /**
      * Mounts a VNode to the DOM element.
      *
-     * @mono-jsx
+     * @mono-jsx-dom
      */
     mount(node: VNode, aboutSignal?: AbortSignal): void;
   }

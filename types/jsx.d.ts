@@ -22,7 +22,7 @@ export interface BaseAttributes {
   slot?: string;
   /**
    * The `portal` attribute is used to mount the component to a specified DOM element.
-   * @mono-jsx
+   * @mono-jsx-dom
    */
   // portal?: HTMLElement;
 }
@@ -50,8 +50,8 @@ export interface ComponentType<P = {}> {
 
 export interface MonoBuiltinElements {
   /**
-   * A built-in element of mono-jsx that toggles the visibility of its children.
-   * @mono-jsx
+   * A built-in element of mono-jsx-dom that toggles the visibility of its children.
+   * @mono-jsx-dom
    */
   show: BaseAttributes & {
     /**
@@ -65,8 +65,8 @@ export interface MonoBuiltinElements {
   };
 
   /**
-   * A built-in element of mono-jsx that toggles the visibility of its children.
-   * @mono-jsx
+   * A built-in element of mono-jsx-dom that toggles the visibility of its children.
+   * @mono-jsx-dom
    */
   hidden: BaseAttributes & {
     /**
@@ -80,9 +80,9 @@ export interface MonoBuiltinElements {
   };
 
   /**
-   * A a built-in element of mono-jsx that chooses one of its children based on the `slot` attribute to display.
+   * A a built-in element of mono-jsx-dom that chooses one of its children based on the `slot` attribute to display.
    * It is similar to a switch statement in programming languages.
-   * @mono-jsx
+   * @mono-jsx-dom
    */
   switch: BaseAttributes & {
     /**
@@ -116,7 +116,7 @@ declare global {
   interface FCExtension<FC = {}> {}
 
   /**
-   * mono-jsx component scope.
+   * mono-jsx-dom component scope.
    */
   type FC<Signals = {}, Refs = Record<string, HTMLElement>> =
     & {
@@ -154,13 +154,13 @@ declare global {
 
   /**
    * The JSX namespace object.
-   * @mono-jsx
+   * @mono-jsx-dom
    */
   var JSX: {
     customElements: {
       /**
        * Defines a built-in custom element.
-       * @mono-jsx
+       * @mono-jsx-dom
        */
       define: (tagName: string, fc: ComponentType<any>) => void;
     };
@@ -168,17 +168,17 @@ declare global {
 
   /**
    * Creates XSS-unsafed HTML content.
-   * @mono-jsx
+   * @mono-jsx-dom
    */
   var html: JSX.Raw;
   /**
    * An alias to `html`.
-   * @mono-jsx
+   * @mono-jsx-dom
    */
   var css: JSX.Raw;
   /**
    * An alias to `html`.
-   * @mono-jsx
+   * @mono-jsx-dom
    */
   var js: JSX.Raw;
 }
