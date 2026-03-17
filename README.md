@@ -7,9 +7,9 @@
 
 `mono-jsx-dom` is a JSX runtime that renders web UI with browser-specific APIs.
 
+- ⚡️ Use browser-specific APIs, no virtual DOM
 - 🦋 Lightweight (4KB gzipped), zero dependencies
 - 🚦 Signals as reactive primitives
-- ⚡️ Use browser-specific APIs, no virtual DOM
 - 💡 Complete Web API TypeScript definitions
 - ⏳ Streaming rendering
 
