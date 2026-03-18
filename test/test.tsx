@@ -3,7 +3,7 @@
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1.0.19";
 import puppeteer from "npm:puppeteer-core@24.37.5";
 import chrome from "npm:puppeteer-chromium-resolver@24.0.3";
-import { stop, transform } from "npm:esbuild@0.27.3";
+import { stop, transform } from "npm:esbuild@0.27.4";
 
 let routeSeq = 0;
 let testRoutes: Map<string, Promise<string>> = new Map();
@@ -878,7 +878,7 @@ Deno.test("list rendering", sanitizeFalse, async (t) => {
 
   await t.step("reactive list", async () => {
     const testUrl = addTestPage(`
-      function Todos(this: FC<{ todos: string[] }>) {
+      function Todos(this: FC) {
         const todos = this.store({
           items: ["Buy groceries", "Walk the dog", "Do laundry"],
           add(content: string) {
