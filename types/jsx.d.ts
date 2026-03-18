@@ -96,6 +96,14 @@ export interface MonoBuiltinElements {
   };
 }
 
+export interface Atom<T> {
+  get(): T;
+  set(value: T | ((prev: T) => T)): void;
+  map(callback: (value: T extends (infer V)[] ? V : T, index: number) => ChildPrimitiveType): ChildPrimitiveType[];
+  ref(): T;
+  ref<V>(callback: (value: T) => V): V;
+}
+
 declare global {
   namespace JSX {
     type ElementType<P = any> =
@@ -113,8 +121,6 @@ declare global {
     interface IntrinsicElements extends HTML.Elements, HTML.SVGElements, HTML.CustomElements, JSX.BuiltinElements, MonoBuiltinElements {}
   }
 
-  interface FCExtension<FC = {}> {}
-
   /**
    * mono-jsx-dom component scope.
    */
@@ -122,14 +128,20 @@ declare global {
     & {
       /**
        * The `refs` object stores variables in clide side.
-       *
-       * **⚠ This is a client-side only API.**
        */
       readonly refs: Refs;
       /**
        * Initializes the signals.
        */
       init(initValue: Signals): void;
+      /**
+       * Creates an atom signal.
+       */
+      atom: <T>(initValue: T) => Atom<T>;
+      /**
+       * Creates a signal store.
+       */
+      store: <T extends Record<string, unknown>>(initValue: T) => T;
       /**
        * Creates a computed signal.
        */
@@ -144,8 +156,7 @@ declare global {
        */
       effect(fn: () => (() => void) | void): void;
     }
-    & FCExtension<FC>
-    & Omit<Omit<Signals, "refs" | "init" | "computed" | "$" | "effect">, keyof FCExtension>;
+    & Omit<Signals, "refs" | "init" | "atom" | "store" | "computed" | "$" | "effect">;
 
   /**
    *  Defines the `this.refs` type.

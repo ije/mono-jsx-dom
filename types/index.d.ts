@@ -1,12 +1,11 @@
-import type { ChildPrimitiveType } from "./jsx.d.ts";
+import type { Atom } from "./jsx.d.ts";
 
-export interface Atom<T> {
-  get(): T;
-  set(value: T | ((prev: T) => T)): void;
-  map(callback: (value: T extends (infer V)[] ? V : T, index: number) => ChildPrimitiveType): ChildPrimitiveType[];
-  ref(): T;
-  ref<V>(callback: (value: T) => V): V;
-}
-
+/**
+ * Creates an atom signal.
+ */
 export const atom: <T>(initValue: T) => Atom<T>;
+
+/**
+ * Creates a signal store.
+ */
 export const store: <T extends Record<string, unknown>>(initValue: T) => T;

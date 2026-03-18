@@ -4,6 +4,7 @@ import { $vnode } from "./symbols.ts";
 export const regexpIsNonDimensional =
   /^(-|f[lo].*[^se]$|g.{5,}[^ps]$|z|o[pr]|(W.{5})?[lL]i.*(t|mp)$|an|(bo|s).{4}Im|sca|m.{6}[ds]|ta|c.*[st]$|wido|ini)/; // copied from https://github.com/preactjs/preact/blob/main/compat/src/util.js
 
+export const document = globalThis.document;
 export const isString = (v: unknown): v is string => typeof v === "string";
 export const isFunction = (v: unknown): v is Function => typeof v === "function";
 export const isObject = (v: unknown): v is object => typeof v === "object" && v !== null;

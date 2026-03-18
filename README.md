@@ -393,11 +393,11 @@ function Counter(this: FC<{ count: number }>, props: { initialCount?: number }) 
 }
 ```
 
-You can use `this.extend` to create an extended signals object. You can use getters to create derived (computed) signals.
+You can use `this.store` to create a signal store. You can use getters to create derived (computed) signals.
 
 ```tsx
 function App(this: FC<{ count: number }>) {
-  const counter = this.extend({
+  const counter = this.store({
     value: 0,
     // double is a derived(computed) signal
     get double() {
@@ -715,7 +715,8 @@ mono-jsx-dom binds a scoped signals object to `this` in your component functions
 
 The `this` object has the following built-in properties:
 
-- `extend(initValue)`: Extends the signals object.
+- `atom(initValue)`: Creates an atom signal.
+- `store(initValue)`: Creates a signal store.
 - `init(initValue)`: Initializes the signals.
 - `refs`: A map of refs defined in the component.
 - `computed(fn)`: A method to create a computed signal.
@@ -724,7 +725,8 @@ The `this` object has the following built-in properties:
 
 ```ts
 type FC<Signals = {}, Refs = {}> = {
-  extend<T extends Record<string, unknown>>(initValue: T): FC<T>;
+  atom<T>(initValue: T): Atom<T>;
+  store<T extends Record<string, unknown>>(initValue: T): T;
   init(initValue: Signals): void;
   refs: Refs;
   computed<T = unknown>(fn: () => T): T;

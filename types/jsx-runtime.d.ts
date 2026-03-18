@@ -9,15 +9,6 @@ export const jsx: (tag: string | ComponentType, props: Record<string, unknown>, 
 export { html as css, html as js, jsx as jsxDEV, jsx as jsxs };
 
 declare global {
-  interface FCExtension<FC> {
-    /**
-     * Creates a new signals object.
-     *
-     * **⚠ This is a client-side only API.**
-     */
-    extend<T extends Record<string, unknown>>(initValue: T): FC & T;
-  }
-
   interface HTMLElement {
     /**
      * Mounts a VNode to the DOM element.

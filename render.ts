@@ -1,9 +1,9 @@
-import type { ChildType, ComponentType, VNode } from "./types/jsx.d.ts";
+import type { Atom, ChildType, ComponentType, VNode } from "./types/jsx.d.ts";
 import { customElements } from "./jsx.ts";
 import { isFunction, isPlainObject, isString, isVNode, toHyphenCase } from "./utils.ts";
 import { createElement, createStyleElement, createTextNode } from "./utils.ts";
 import { onAbort, setAttribute } from "./utils.ts";
-import { NullPrototypeObject, regexpIsNonDimensional } from "./utils.ts";
+import { document, NullPrototypeObject, regexpIsNonDimensional } from "./utils.ts";
 import { $fragment, $html } from "./symbols.ts";
 
 interface IScope {
@@ -12,7 +12,8 @@ interface IScope {
   readonly [$get]: (key: string) => unknown;
   readonly [$watch]: (key: string, effect: () => void) => () => void;
   readonly [$expr]: (ok: boolean) => void;
-  readonly extend: <T = Record<string, unknown>>(props: T) => IScope & T;
+  readonly atom: <T>(value: T) => Atom<T>;
+  readonly store: <T = Record<string, unknown>>(props: T) => T;
   readonly init: (init: Record<string, unknown>) => void;
 }
 
@@ -46,7 +47,7 @@ class Signal extends Reactive {
   }
   get() {
     if (this.#isAtom) {
-      $depsMark?.add(this);
+      depsMark?.add(this);
     }
     return this.#scope[$get](this.#key);
   }
@@ -77,16 +78,16 @@ class Computed extends Reactive {
     this.#compute = compute;
   }
   get() {
-    const shouldMark = !this.#deps && !$depsMark;
+    const shouldMark = !this.#deps && !depsMark;
     if (shouldMark) {
       // start collecting dependencies
-      $depsMark = new Set<Signal>();
+      depsMark = new Set<Signal>();
     }
     const value = this.#compute.call(this.#scope);
     if (shouldMark) {
-      this.#deps = $depsMark;
+      this.#deps = depsMark;
       // stop collecting dependencies
-      $depsMark = undefined;
+      depsMark = undefined;
     }
     return value;
   }
@@ -138,19 +139,15 @@ class InsertMark {
   }
 }
 
-const document = globalThis.document;
+const globalScopes = new Set<IScope>();
 const $get = Symbol();
 const $watch = Symbol();
 const $expr = Symbol();
 const $slots = Symbol();
-const globalScopes = new Set<IScope>();
-const call$expr = (scope: IScope, ok: boolean) => {
-  scope[$expr](ok);
-  globalScopes.forEach(s => s[$expr](ok));
-};
 
-// for reactive dependencies tracking
-let $depsMark: Set<Signal> | undefined;
+let appScope: IScope | undefined;
+let atomIndex = 0;
+let depsMark: Set<Signal> | undefined;
 
 const createScope = (slots?: ChildType[], abortSignal?: AbortSignal): IScope => {
   let exprMode = false;
@@ -159,7 +156,7 @@ const createScope = (slots?: ChildType[], abortSignal?: AbortSignal): IScope => 
   let signals = new Map<string, Signal>();
   let refs = new Proxy(new NullPrototypeObject(), {
     get(_, key: string) {
-      if (!exprMode || $depsMark) {
+      if (!exprMode || depsMark) {
         return refElements.get(key);
       }
       return new Ref(refElements, key);
@@ -188,7 +185,13 @@ const createScope = (slots?: ChildType[], abortSignal?: AbortSignal): IScope => 
           return (init: Record<string, unknown>) => {
             Object.assign(target, init);
           };
-        case "extend":
+        case "atom":
+          return (value: unknown) => {
+            const atomKey = "atom$" + atomIndex++;
+            target[atomKey] = value;
+            return new Signal(receiver, atomKey, true);
+          };
+        case "store":
           return (init: Record<string, unknown>) => {
             for (const [key, { set, get, value }] of Object.entries(Object.getOwnPropertyDescriptors(init))) {
               if (set) {
@@ -213,9 +216,9 @@ const createScope = (slots?: ChildType[], abortSignal?: AbortSignal): IScope => 
           return (callback: () => (() => void) | void) => {
             queueMicrotask(() => {
               // start collecting dependencies
-              $depsMark = new Set<Signal>();
+              depsMark = new Set<Signal>();
               let cleanup = callback.call(receiver);
-              $depsMark.forEach((dep) =>
+              depsMark.forEach((dep) =>
                 dep.watch(() => {
                   cleanup?.();
                   cleanup = callback.call(receiver);
@@ -225,7 +228,7 @@ const createScope = (slots?: ChildType[], abortSignal?: AbortSignal): IScope => 
                 onAbort(abortSignal, cleanup);
               }
               // stop collecting dependencies
-              $depsMark = undefined;
+              depsMark = undefined;
             });
           };
         case "refs":
@@ -235,11 +238,11 @@ const createScope = (slots?: ChildType[], abortSignal?: AbortSignal): IScope => 
           if (typeof key === "symbol" || isFunction(value)) {
             return value;
           }
-          const getRawValue = !exprMode || $depsMark !== undefined;
+          const getRawValue = !exprMode || depsMark !== undefined;
           if (value instanceof Reactive) {
             if (getRawValue) {
               if (value instanceof Signal) {
-                $depsMark?.add(value);
+                depsMark?.add(value);
               }
               return value.get();
             }
@@ -251,7 +254,7 @@ const createScope = (slots?: ChildType[], abortSignal?: AbortSignal): IScope => 
             signals.set(key, signal);
           }
           if (getRawValue) {
-            $depsMark?.add(signal);
+            depsMark?.add(signal);
             return value;
           }
           return signal;
@@ -278,21 +281,17 @@ const createScope = (slots?: ChildType[], abortSignal?: AbortSignal): IScope => 
   return scope;
 };
 
-let atomIndex = 0;
-let atomScope: IScope | undefined;
 const atom = (value: unknown) => {
-  if (!atomScope) {
-    atomScope = createScope();
+  if (!appScope) {
+    appScope = createScope();
   }
-  const atomKey = "$" + atomIndex++;
-  atomScope[atomKey] = value;
-  return new Signal(atomScope, atomKey, true);
+  return appScope.atom(value);
 };
 
 const store = (props: Record<string, unknown>) => {
-  const scope = createScope().extend(props);
+  const scope = createScope();
   globalScopes.add(scope);
-  return scope;
+  return scope.store(props);
 };
 
 const render = (scope: IScope, child: ChildType, root: HTMLElement | DocumentFragment, abortSignal?: AbortSignal) => {
@@ -611,7 +610,7 @@ const renderFC = (fc: ComponentType, props: Record<string, unknown>, root: HTMLE
   let el: ReturnType<typeof fc>;
   let scope = createScope(props.children as ChildType[] | undefined, abortSignal) as unknown as IScope;
   let catchFn = props.catch as ((err: unknown) => VNode) | undefined;
-  call$expr(scope, true);
+  setExpr(scope, true);
   try {
     el = fc.call(scope, props);
   } catch (err) {
@@ -631,7 +630,7 @@ const renderFC = (fc: ComponentType, props: Record<string, unknown>, root: HTMLE
     }
     root.append(...pendingNodes);
     el.then((nodes) => {
-      call$expr(scope, false);
+      setExpr(scope, false);
       pendingNodes[0].replaceWith(...renderToFragment(scope, nodes as ChildType, abortSignal).childNodes);
     }).catch((err) => {
       if (!catchFn) {
@@ -639,12 +638,12 @@ const renderFC = (fc: ComponentType, props: Record<string, unknown>, root: HTMLE
       }
       pendingNodes[0].replaceWith(...renderToFragment(scope, catchFn(err) as ChildType, abortSignal).childNodes);
     }).finally(() => {
-      call$expr(scope, false);
+      setExpr(scope, false);
       // remove pendingNodes elements
       pendingNodes.forEach(node => node.remove());
     });
   } else {
-    call$expr(scope, false);
+    setExpr(scope, false);
     if (isPlainObject(el) && !isVNode(el)) {
       if (Symbol.asyncIterator in el) {
         //  todo: async generator
@@ -665,12 +664,34 @@ const renderToFragment = (scope: IScope, node: ChildType | ChildType[], aboutSig
   return fragment;
 };
 
+const renderStyle = (style: Record<string, unknown>, mark?: Set<Reactive>): string => {
+  let css = "";
+  let vt: string;
+  let cssKey: string;
+  let cssValue: string;
+  for (let [k, v] of Object.entries(style)) {
+    v = $(v, mark);
+    vt = typeof v;
+    if (vt === "string" || vt === "number") {
+      cssKey = toHyphenCase(k);
+      cssValue = vt === "number" ? (regexpIsNonDimensional.test(k) ? "" + v : v + "px") : "" + v;
+      css += (css ? ";" : "") + cssKey + ":" + (cssKey === "content" ? JSON.stringify(cssValue) : cssValue) + ";";
+    }
+  }
+  return "{" + css + "}";
+};
+
 const $ = <T>(value: T, mark?: Set<Reactive>): T => {
   if (value instanceof Reactive) {
     mark?.add(value);
     value = value.get() as T;
   }
   return value;
+};
+
+const setExpr = (scope: IScope, ok: boolean) => {
+  scope[$expr](ok);
+  globalScopes.forEach(s => s[$expr](ok));
 };
 
 const cx = (className: unknown, mark?: Set<Reactive>): string => {
@@ -735,23 +756,6 @@ const applyStyle = (el: HTMLElement, style: unknown, mark?: Set<Reactive>): void
   } else if (isString(style)) {
     el.style.cssText = style;
   }
-};
-
-const renderStyle = (style: Record<string, unknown>, mark?: Set<Reactive>): string => {
-  let css = "";
-  let vt: string;
-  let cssKey: string;
-  let cssValue: string;
-  for (let [k, v] of Object.entries(style)) {
-    v = $(v, mark);
-    vt = typeof v;
-    if (vt === "string" || vt === "number") {
-      cssKey = toHyphenCase(k);
-      cssValue = vt === "number" ? (regexpIsNonDimensional.test(k) ? "" + v : v + "px") : "" + v;
-      css += (css ? ";" : "") + cssKey + ":" + (cssKey === "content" ? JSON.stringify(cssValue) : cssValue) + ";";
-    }
-  }
-  return "{" + css + "}";
 };
 
 export { atom, Reactive, render, store };

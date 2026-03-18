@@ -399,7 +399,7 @@ Deno.test("signals", sanitizeFalse, async (t) => {
   await t.step("getter", async () => {
     const testUrl = addTestPage(`
       function App(this: FC) {
-        const count = this.extend({
+        const count = this.store({
           value: 1,
           get double() {
             return this.value * 2;
@@ -642,6 +642,30 @@ Deno.test("signals", sanitizeFalse, async (t) => {
 
     await page.close();
   });
+
+  await t.step("this.atom", async () => {
+    const testUrl = addTestPage(`
+      function App(this: FC) {
+        const count = this.atom(0);
+        return <h1 onClick={() => count.set(prev => prev + 1)}>{count}</h1>
+      }
+      document.body.mount(<App />);
+    `);
+    const page = await browser.newPage();
+    await page.goto(testUrl);
+
+    const h1 = await page.$("body > h1");
+    assert(h1);
+    assertEquals(await h1.evaluate((el) => el.textContent), "0");
+
+    await h1.evaluate((el) => el.click());
+    assertEquals(await h1.evaluate((el) => el.textContent), "1");
+
+    await h1.evaluate((el) => el.click());
+    assertEquals(await h1.evaluate((el) => el.textContent), "2");
+
+    await page.close();
+  });
 });
 
 Deno.test("ref", sanitizeFalse, async () => {
@@ -855,7 +879,7 @@ Deno.test("list rendering", sanitizeFalse, async (t) => {
   await t.step("reactive list", async () => {
     const testUrl = addTestPage(`
       function Todos(this: FC<{ todos: string[] }>) {
-        const todos = this.extend({
+        const todos = this.store({
           items: ["Buy groceries", "Walk the dog", "Do laundry"],
           add(content: string) {
             this.items = [...this.items, content]
