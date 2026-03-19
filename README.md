@@ -12,6 +12,7 @@
 - 🚦 Signals as reactive primitives
 - 💡 Complete Web API TypeScript definitions
 - ⏳ Streaming rendering
+- 🔩 Builtin dev/build/deploy toolchain
 
 Playground: https://val.town/x/ije/mono-jsx-dom
 
