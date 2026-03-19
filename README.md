@@ -21,39 +21,16 @@ Playground: https://val.town/x/ije/mono-jsx-dom
 npm install mono-jsx-dom
 ```
 
-## Setup JSX Runtime
+## Getting Started
 
-To use mono-jsx-dom as your JSX runtime, add the following configuration to your `tsconfig.json` (or `deno.json` for Deno):
-
-```jsonc
-{
-  "compilerOptions": {
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "jsx": "react-jsx",
-    "jsxImportSource": "mono-jsx-dom"
-  }
-}
-```
-
-You can also run the `mono-jsx-dom setup` command to set up the environment for `mono-jsx-dom`:
+You can run the `mono-jsx-dom int` command to initialize a project with mono-jsx-dom boilerplate.
 
 ```bash
-# npm
-npx mono-jsx-dom setup
+# node
+npx mono-jsx-dom init
 
 # bun
-bunx --bun mono-jsx-dom setup
-```
-
-Or use the `@jsxImportSource` pragma directive to use `mono-jsx-dom` as your JSX runtime:
-
-```tsx
-/** @jsxImportSource mono-jsx-dom */
-
-function App() {
-  return <div>Hello, world!</div>;
-}
+bunx --bun mono-jsx-dom init
 ```
 
 ## Usage
@@ -68,12 +45,6 @@ function App(this: FC) {
 }
 
 document.body.mount(<App />);
-```
-
-To run an app built with `mono-jsx-dom` in the browser, you need a TSX transformer to compile the TSX code to JavaScript. For example, you can use [esbuild](https://esbuild.github.io):
-
-```bash
-bunx esbuild --bundle --jsx=automatic --jsx-import-source=mono-jsx-dom --platform=browser --format=esm --target=es2022 --outfile=app.js app.tsx
 ```
 
 >[!TIP]

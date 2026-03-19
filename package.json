@@ -28,6 +28,12 @@
       "types": "./types/jsx-runtime.d.ts",
       "node": "./jsx-runtime.mjs",
       "import": "./jsx-runtime.mjs"
+    },
+    "./server": {
+      "types": "./types/server.d.ts",
+      "workerd": "./server/workerd.mjs",
+      "node": "./server/index.mjs",
+      "import": "./server/index.mjs"
     }
   },
   "scripts": {
@@ -35,7 +41,8 @@
   },
   "files": [
     "./*.mjs",
-    "./cli/*.mjs",
+    "./bin/*.mjs",
+    "./server/*.mjs",
     "./types/*.d.ts"
   ],
   "repository": {

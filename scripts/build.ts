@@ -10,7 +10,16 @@ async function buildPackageModule(name: string, format: "esm" | "cjs" = "esm") {
     target: "esnext",
     bundle: true,
     minify: false,
-    external: ["node:*", "*.mjs"],
+    external: ["node:*", "cloudflare:*", "*.mjs"],
+    plugins: [{
+      name: "npm-specifier",
+      setup(b) {
+        b.onResolve({ filter: /^npm:.+/ }, (args) => {
+          const path = args.path.slice(4).split("@", 1)[0];
+          return { path, external: true };
+        });
+      },
+    }],
   });
   const gzippedSize = await getGzippedSize(await Deno.readTextFile(outfile));
   return {
@@ -45,31 +54,20 @@ function formatBytes(bytes: number): string {
 }
 
 if (import.meta.main) {
-  const eol = "\n";
   const start = performance.now();
-  const binJS = [
-    `#!/usr/bin/env node`,
-    ``,
-    `import process from "node:process";`,
-    `import { setup } from "../setup.mjs";`,
-    ``,
-    `switch (process.argv[2]) {`,
-    `  case "setup":`,
-    `    setup()`,
-    `    break;`,
-    `  default:`,
-    `    process.exit(0);`,
-    `}`,
-    ``,
-  ].join(eol);
 
-  for (const moduleName of ["setup", "index", "jsx-runtime"]) {
+  for await (const entry of Deno.readDir(".")) {
+    if (entry.isFile && entry.name.endsWith(".mjs")) {
+      await Deno.remove(entry.name);
+    }
+  }
+
+  for (const moduleName of ["bin/init", "bin/dev", "bin/build", "index", "jsx-runtime", "server/index", "server/workerd"]) {
     const { size, gzippedSize } = await buildPackageModule(moduleName, "esm");
     console.log(`· ${moduleName}.mjs %c(${formatBytes(size)}, ${formatBytes(gzippedSize)} gzipped)`, "color:grey");
   }
 
   await Deno.mkdir("./bin", { recursive: true });
-  Deno.writeTextFile("./bin/mono-jsx-dom", binJS, { mode: 0o755 });
 
   console.log("%cBuild complete! (%d ms)", "color:grey", performance.now() - start);
   stop();

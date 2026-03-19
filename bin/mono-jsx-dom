@@ -1,0 +1,17 @@
+#!/usr/bin/env node
+
+import process from "node:process";
+
+switch (process.argv[2]) {
+  case "init":
+    import("./init.mjs").then(({ init }) => init())
+    break;
+  case "dev":
+    import("./dev.mjs").then(({ dev }) => dev())
+    break;
+  case "build":
+    import("./build.mjs").then(({ build }) => build())
+    break;
+  default:
+    process.exit(0);
+}

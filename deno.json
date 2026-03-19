@@ -14,7 +14,7 @@
     "mono-jsx-dom/jsx-runtime": "./jsx-runtime.ts"
   },
   "tasks": {
-    "build": "deno run -A --no-lock build.ts",
+    "build": "deno run -A --no-lock scripts/build.ts",
     "test": "deno task build && deno test -A --no-lock test/",
     "fmt": "dprint fmt"
   },
