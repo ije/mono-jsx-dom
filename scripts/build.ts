@@ -62,7 +62,18 @@ if (import.meta.main) {
     }
   }
 
-  for (const moduleName of ["bin/init", "bin/dev", "bin/build", "index", "jsx-runtime", "server/index", "server/workerd"]) {
+  for (
+    const moduleName of [
+      "bin/init",
+      "bin/dev",
+      "bin/build",
+      "index",
+      "jsx-runtime",
+      "server/index",
+      "server/workerd",
+      "server/node-fetch-server",
+    ]
+  ) {
     const { size, gzippedSize } = await buildPackageModule(moduleName, "esm");
     console.log(`· ${moduleName}.mjs %c(${formatBytes(size)}, ${formatBytes(gzippedSize)} gzipped)`, "color:grey");
   }
