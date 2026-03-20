@@ -49,12 +49,12 @@ document.body.mount(<App />);
   "server.ts": `import server from "mono-jsx-dom/server";
 
 export default {
-  fetch(request: Request, env: Env) {
+  fetch(req: Request, env: Env) {
     const url = new URL(req.url);
     if (url.pathname === "/data/word") {
       return new Response("world")
     }
-    return server.fetch(request);
+    return server.fetch(req);
   },
 }
 `,

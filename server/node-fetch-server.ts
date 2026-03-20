@@ -1,30 +1,15 @@
 // based on https://github.com/remix-run/remix/tree/main/packages/node-fetch-server
 
-import type { IncomingMessage, ServerResponse } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 
-export type RequestListenerHandler = (
-  request: Request,
-  client: { address?: string; family?: string; port?: number },
-) => Promise<Response>;
+type Fetch = (request: Request) => Response | Promise<Response>;
 
-export type RequestListenerOptions = {
-  protocol?: string;
-  host?: string;
-  onError?: (error: Error) => Promise<Response>;
-};
-
-export function createRequestListener(handler: RequestListenerHandler, options?: RequestListenerOptions) {
+function createRequestListener(fetch: Fetch, options?: ServeOptions) {
   const onError = options?.onError ?? defaultErrorHandler;
   return async (req: IncomingMessage, res: ServerResponse) => {
-    const request = createRequest(req, res, options);
-    const client = {
-      address: req.socket.remoteAddress,
-      family: req.socket.remoteFamily,
-      port: req.socket.remotePort,
-    };
     let response;
     try {
-      response = await handler(request, client);
+      response = await fetch(createRequest(req, res, options));
     } catch (error) {
       try {
         response = await onError(error as Error) ?? internalServerError();
@@ -68,12 +53,12 @@ function internalServerError() {
   );
 }
 
-function createRequest(req: IncomingMessage, res: ServerResponse, options?: RequestListenerOptions) {
+function createRequest(req: IncomingMessage, res: ServerResponse, options?: ServeOptions) {
   let controller: AbortController | null = new AbortController();
   let method = req.method ?? "GET";
   let headers = createHeaders(req);
-  let protocol = options?.protocol ?? ("encrypted" in req.socket && req.socket.encrypted ? "https:" : "http:");
-  let host = options?.host ?? headers.get("Host") ?? req.headers[":authority"] ?? "localhost";
+  let protocol = "encrypted" in req.socket && req.socket.encrypted ? "https:" : "http:";
+  let host = headers.get("Host") ?? req.headers[":authority"] ?? options?.hostname ?? "localhost";
   let url = new URL(req.url!, `${protocol}//${host}`);
   let init: RequestInit & { duplex?: "half" } = { method, headers, signal: controller.signal };
   res.once("close", () => controller?.abort());
@@ -134,4 +119,23 @@ async function sendResponse(res: ServerResponse, response: Response) {
     }
   }
   res.end();
+}
+
+export type ServeOptions = {
+  port?: number;
+  hostname?: string;
+  signal?: AbortSignal;
+  fetch: (req: Request) => Response | Promise<Response>;
+  onError?: (error: Error) => Response | Promise<Response>;
+};
+
+export function serve(options: ServeOptions) {
+  const port = options?.port ?? 3000;
+  const server = createServer(createRequestListener(options.fetch, options));
+  server.listen(port, options?.hostname, () => {
+    console.log(`Server is running on http://${options?.hostname ?? "localhost"}:${port}`);
+  });
+  options?.signal?.addEventListener("abort", () => {
+    server.close();
+  });
 }

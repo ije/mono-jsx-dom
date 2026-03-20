@@ -13,6 +13,7 @@ export type BuildOptions = {
   dir?: string;
   outdir?: string;
   target?: string;
+  runtime?: "node" | "fetch-server";
   dev?: {
     port: number;
     signal?: AbortSignal;
@@ -179,65 +180,97 @@ export async function build(options?: BuildOptions) {
   } else {
     const result = await ctx.rebuild();
     await ctx.dispose();
-    await ensureDir(outdir);
 
-    const vfs: Record<string, VFile> = {};
-    for (const file of result.outputFiles) {
-      const contentType = file.path.endsWith(".js") ? "application/javascript" : "text/css";
-      const filename = relative(outdir, file.path);
-      vfs[filename] = await createVFile(filename, file.text, contentType + "; charset=utf-8");
-    }
-    if (tw.entryCSS) {
-      await tw.build();
-      if (tw.builtCSS) {
-        const filename = tw.entryCSS.filename;
-        vfs[filename] = await createVFile(filename, await minifyCSS(tw.builtCSS), "text/css");
+    // build build.json
+    {
+      const vfs: Record<string, VFile> = {};
+      for (const file of result.outputFiles) {
+        const contentType = file.path.endsWith(".js") ? "application/javascript" : "text/css";
+        const filename = relative(outdir, file.path);
+        vfs[filename] = await createVFile(filename, file.text, contentType + "; charset=utf-8");
       }
-    }
-    for (const filename of styleLinks) {
-      if (filename !== tw.entryCSS?.filename) {
-        const content = await bundleCSS(join(workDir, filename));
-        vfs[filename] = await createVFile(filename, content, "text/css");
+      if (tw.entryCSS) {
+        await tw.build();
+        if (tw.builtCSS) {
+          const filename = tw.entryCSS.filename;
+          vfs[filename] = await createVFile(filename, await minifyCSS(tw.builtCSS), "text/css");
+        }
       }
+      for (const filename of styleLinks) {
+        if (filename !== tw.entryCSS?.filename) {
+          const content = await bundleCSS(join(workDir, filename));
+          vfs[filename] = await createVFile(filename, content, "text/css");
+        }
+      }
+      vfs["index.html"] = await createVFile("index.html", indexHTML, "text/html");
+      await ensureDir(outdir);
+      await writeFile(join(outdir, "build.json"), JSON.stringify(vfs, null, 2));
     }
-    vfs["index.html"] = await createVFile("index.html", indexHTML, "text/html");
-    await writeFile(join(outdir, "build.json"), JSON.stringify(vfs, null, 2));
+
+    const js = 'import server from "mono-jsx-dom/server";'
+      + 'import build from "./build.json" with { type: "json" };'
+      + "server.setVFS(new Map(Object.entries(build)));";
 
     // build server.js
-    const stdin = {
-      sourcefile: join(workDir, "server.js"),
-      contents: 'import server from "mono-jsx-dom/server;export default server;',
-      loader: "ts" as esbuild.Loader,
-    };
-    for (const loader of ["ts", "tsx", "js", "jsx"] as const) {
-      const sourcefile = join(workDir, "server." + loader);
-      if (await exists(sourcefile)) {
-        stdin.sourcefile = sourcefile;
-        stdin.contents = await readFile(sourcefile, "utf8");
-        stdin.loader = loader;
-        break;
+    {
+      const stdin = {
+        sourcefile: join(workDir, "server.js"),
+        contents: 'import server from "mono-jsx-dom/server;export default server;',
+        loader: "ts" as esbuild.Loader,
+      };
+      for (const loader of ["ts", "tsx", "js", "jsx"] as const) {
+        const sourcefile = join(workDir, "server." + loader);
+        if (await exists(sourcefile)) {
+          stdin.sourcefile = sourcefile;
+          stdin.contents = await readFile(sourcefile, "utf8");
+          stdin.loader = loader;
+          break;
+        }
       }
+      await esbuild.build({
+        stdin: stdin,
+        absWorkingDir: workDir,
+        outfile: join(outdir, "server.mjs"),
+        bundle: true,
+        treeShaking: true,
+        minify: true,
+        write: true,
+        platform: "node",
+        format: "esm",
+        target: "es2024",
+        external: ["mono-jsx-dom/server"],
+        banner: options?.runtime === "node" ? undefined : { js },
+      });
     }
-    await esbuild.build({
-      stdin: stdin,
-      absWorkingDir: workDir,
-      outfile: join(outdir, "server.mjs"),
-      banner: {
-        "js": [
-          'import server from "mono-jsx-dom/server";',
-          'import build from "./build.json" with { type: "json" };',
-          "server.setVFS(new Map(Object.entries(build)));",
+
+    // use node-fetch-server for node runtime
+    if (options?.runtime === "node") {
+      const stdin = {
+        sourcefile: join(outdir, "server-node.mjs"),
+        resolveDir: outdir,
+        contents: [
+          'import { serve } from "mono-jsx-dom/server/node-fetch-server";',
+          'import server from "./server.mjs";',
+          "serve(server);",
         ].join("\n"),
-      },
-      bundle: true,
-      treeShaking: true,
-      minify: true,
-      write: true,
-      platform: "node",
-      format: "esm",
-      target: "es2024",
-      external: ["mono-jsx-dom/server"],
-    });
+        loader: "js" as esbuild.Loader,
+      };
+      await esbuild.build({
+        stdin,
+        absWorkingDir: workDir,
+        outfile: join(outdir, "server.mjs"),
+        bundle: true,
+        treeShaking: true,
+        minify: true,
+        write: true,
+        allowOverwrite: true,
+        platform: "node",
+        format: "esm",
+        target: "es2024",
+        external: ["mono-jsx-dom/server", "mono-jsx-dom/server/node-fetch-server"],
+        banner: { js },
+      });
+    }
 
     console.log("\x1b[32m✅ build complete\x1b[0m", "\x1b[90m(%d ms)\x1b[0m", performance.now() - start);
   }

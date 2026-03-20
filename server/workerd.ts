@@ -6,10 +6,10 @@ let assets: ASSETS | undefined;
 export const server = {
   fetch: async (req: Request, env?: any) => {
     const { pathname, searchParams } = new URL(req.url);
-    let filename = pathname.slice(1);
+    let filename = pathname.slice(1) || "index.html";
     if (!vfs.has(filename)) {
       const a = assets ?? env?.ASSETS;
-      if (a) {
+      if (a && !filename.startsWith(".")) {
         const res = await a.fetch(req);
         if (res.ok) {
           return res;
@@ -18,7 +18,11 @@ export const server = {
       filename = "index.html";
     }
     if (!vfs.has(filename)) {
-      return new Response("not found", { status: 404 });
+      return new Response(
+        // "Not Found"
+        new Uint8Array([78, 111, 116, 32, 70, 111, 117, 110, 100]),
+        { status: 404 },
+      );
     }
     const file = vfs.get(filename)!;
     const headers: Record<string, string> = {};

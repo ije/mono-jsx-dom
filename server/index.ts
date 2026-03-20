@@ -9,7 +9,6 @@ server.setAssets({
   fetch: async (request: Request) => {
     const { pathname } = new URL(request.url);
     const filename = join(cwd(), "public", pathname);
-    console.log(filename);
     try {
       const stats = await lstat(filename);
       if (stats.isDirectory()) {
