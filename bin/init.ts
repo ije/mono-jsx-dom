@@ -1,7 +1,7 @@
 import process from "node:process";
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline/promises";
 
 const bun = "Bun" in globalThis;
@@ -65,7 +65,11 @@ export default {
 };
 
 export async function init(appName = "mono-app") {
-  const cwd = join(process.cwd(), appName);
+  const appDir = join(process.cwd(), appName);
+  if (await exists(appDir) && !(await confirm(`Directory ${appName} already exists. Overwrite?`))) {
+    return;
+  }
+
   const scaffold: Record<string, string> = { ...template };
   const withTailwind = await confirm("Use TailwindCSS for styling?");
   const withWrangler = await confirm("Add Cloudflare Workers integration?");
@@ -91,10 +95,10 @@ export async function init(appName = "mono-app") {
   if (!withTailwind) {
     scaffold["app/style.css"] = "/* app styles */\n";
   }
-  await ensureDir(cwd);
+  await ensureDir(appDir);
   await Promise.all(
     Object.entries(scaffold).map(async ([filename, content]) => {
-      const filepath = join(cwd, filename);
+      const filepath = join(appDir, filename);
       if (filename === "package.json") {
         content = JSON.stringify({ ...JSON.parse(content), name: appName }, null, 2);
       }
@@ -104,9 +108,10 @@ export async function init(appName = "mono-app") {
       }
     }),
   );
+
   let tsConfig = Object.create(null);
   try {
-    const data = await readFile(join(cwd, "tsconfig.json"), "utf8");
+    const data = await readFile(join(appDir, "tsconfig.json"), "utf8");
     tsConfig = JSON.parse(data);
   } catch {
     // ignore
@@ -119,9 +124,11 @@ export async function init(appName = "mono-app") {
   compilerOptions.noEmit ??= true;
   compilerOptions.jsx = "react-jsx";
   compilerOptions.jsxImportSource = "mono-jsx-dom";
-  await writeFile(join(cwd, "tsconfig.json"), JSON.stringify(tsConfig, null, 2));
-  const cmd = install(cwd, withTailwind, withWrangler);
+  await writeFile(join(appDir, "tsconfig.json"), JSON.stringify(tsConfig, null, 2));
+
+  const cmd = install(appDir, withTailwind, withWrangler);
   const isBun = cmd === "bun";
+
   console.log("");
   console.log("✨ \x1b[32mSetup completed.\x1b[0m");
   console.log("You can now start or build the app with the following commands:");

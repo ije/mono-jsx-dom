@@ -280,7 +280,7 @@ export async function build(options?: BuildOptions) {
       });
     }
 
-    console.log("\x1b[32m✅ build complete\x1b[0m", "\x1b[90m(%d ms)\x1b[0m", performance.now() - start);
+    console.log("\x1b[32m✨ Build completed.\x1b[0m", "\x1b[90m(%d ms)\x1b[0m", performance.now() - start);
   }
 }
 
