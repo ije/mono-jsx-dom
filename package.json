@@ -11,7 +11,7 @@
   "module": "./index.mjs",
   "types": "./types/index.d.ts",
   "bin": {
-    "mono-jsx-dom": "bin/mono-jsx-dom"
+    "mono-jsx-dom": "bin/cli"
   },
   "exports": {
     ".": {
@@ -34,6 +34,10 @@
       "workerd": "./server/workerd.mjs",
       "node": "./server/index.mjs",
       "import": "./server/index.mjs"
+    },
+    "./server/node-fetch-server": {
+      "node": "./server/node-fetch-server.mjs",
+      "import": "./server/node-fetch-server.mjs"
     }
   },
   "scripts": {
