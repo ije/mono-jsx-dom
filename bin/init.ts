@@ -4,7 +4,9 @@ import { dirname, join } from "node:path";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline/promises";
 
-const files = {
+const bun = "Bun" in globalThis;
+
+const template = {
   "package.json": JSON.stringify(
     {
       name: "mono-app",
@@ -13,7 +15,7 @@ const files = {
       scripts: {
         dev: "mono-jsx-dom dev",
         build: "mono-jsx-dom build",
-        start: "Bun" in globalThis ? "mono-jsx-dom build && bun dist/server.mjs" : "mono-jsx-dom build --node && node dist/server.mjs",
+        start: bun ? "mono-jsx-dom build && bun dist/server.mjs" : "mono-jsx-dom build --node && node dist/server.mjs",
       },
     },
     null,
@@ -35,7 +37,7 @@ const files = {
   "public/favicon.ico": "",
   "app/style.css": /* CSS */ `@import "tailwindcss";
 
-/* @ref https://tailwindcss.com/docs/theme */
+/* theme customization, see: https://tailwindcss.com/docs/theme */
 @theme {
 }
 `,
@@ -62,23 +64,30 @@ export default {
 `,
 };
 
-function install(cwd: string, withTailwind: boolean) {
-  let cmd = "npm";
-  if ("Bun" in globalThis) {
-    cmd = "bun";
-  }
-  spawnSync(cmd, ["add", "mono-jsx-dom"], { cwd });
-  spawnSync(cmd, ["add", "-D", "esbuild"], { cwd });
-  if (withTailwind) {
-    spawnSync(cmd, ["add", "-D", "tailwindcss", "oxide-wasm"], { cwd });
-  }
-  return cmd;
-}
-
 export async function init(appName = "mono-app") {
   const cwd = join(process.cwd(), appName);
-  const scaffold = { ...files };
+  const scaffold: Record<string, string> = { ...template };
   const withTailwind = await confirm("Use TailwindCSS for styling?");
+  const withWrangler = await confirm("Add Cloudflare Workers integration?");
+  if (withWrangler) {
+    scaffold["wrangler.json"] = JSON.stringify(
+      {
+        $schema: "./node_modules/wrangler/config-schema.json",
+        name: appName,
+        compatibility_date: (new Date()).toISOString().split("T")[0],
+        main: "dist/server.mjs",
+        build: {
+          command: (bun ? "bun run" : "npm") + " build",
+        },
+        assets: {
+          directory: "./public",
+          binding: "ASSETS",
+        },
+      },
+      null,
+      2,
+    );
+  }
   if (!withTailwind) {
     scaffold["app/style.css"] = "/* app styles */\n";
   }
@@ -111,8 +120,9 @@ export async function init(appName = "mono-app") {
   compilerOptions.jsx = "react-jsx";
   compilerOptions.jsxImportSource = "mono-jsx-dom";
   await writeFile(join(cwd, "tsconfig.json"), JSON.stringify(tsConfig, null, 2));
-  const cmd = install(cwd, withTailwind);
+  const cmd = install(cwd, withTailwind, withWrangler);
   const isBun = cmd === "bun";
+  console.log("");
   console.log("✨ \x1b[32mSetup completed.\x1b[0m");
   console.log("You can now start or build the app with the following commands:");
   console.log("");
@@ -121,6 +131,38 @@ export async function init(appName = "mono-app") {
   console.log(`${cmd} start${isBun ? "    " : ""} \x1b[90m# build and start the app in production mode.\x1b[0m`);
   console.log(`${cmd}${isBun ? " run" : ""} build \x1b[90m# build the app for production.\x1b[0m`);
   console.log("");
+}
+
+function install(cwd: string, withTailwind: boolean, withWrangler: boolean) {
+  let cmd = "npm";
+  if (bun) {
+    cmd = "bun";
+  }
+  spawnSync(cmd, ["add", "mono-jsx-dom"], { cwd });
+  spawnSync(cmd, ["add", "-D", "esbuild"], { cwd });
+  if (withTailwind) {
+    spawnSync(cmd, ["add", "-D", "tailwindcss", "oxide-wasm"], { cwd });
+  }
+  if (withWrangler) {
+    spawnSync(cmd, ["add", "-D", "wrangler"], { cwd });
+    spawnSync(cmd, ["wrangler", "types"], { cwd });
+  }
+  return cmd;
+}
+
+async function confirm(prompt: string): Promise<boolean> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const line = await rl.question("\x1b[34m?\x1b[0m " + prompt + " \x1b[90m(y/N)\x1b[0m ");
+    const yes = /^y(es)?$/i.test(line.trim());
+    if (process.stdout.isTTY) {
+      const answer = yes ? "\x1b[32myes\x1b[0m" : "\x1b[90mno\x1b[0m";
+      process.stdout.write(`\x1b[1A\r\x1b[34m?\x1b[0m ${prompt} ${answer}\x1b[K\n`);
+    }
+    return yes;
+  } finally {
+    rl.close();
+  }
 }
 
 async function exists(path: string) {
@@ -137,19 +179,5 @@ async function ensureDir(path: string) {
     await access(path);
   } catch {
     await mkdir(path, { recursive: true });
-  }
-}
-
-async function confirm(prompt: string): Promise<boolean> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  try {
-    const line = await rl.question("\x1b[34m?\x1b[0m " + prompt + " \x1b[90m(y/N)\x1b[0m ");
-    const yes = /^y(es)?$/i.test(line.trim());
-    if (process.stdout.isTTY) {
-      process.stdout.write("\x1b[1A\x1b[2K\r");
-    }
-    return yes;
-  } finally {
-    rl.close();
   }
 }
