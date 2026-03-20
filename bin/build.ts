@@ -3,11 +3,8 @@ import { cwd } from "node:process";
 import { extname, join, relative } from "node:path";
 import { access, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import * as esbuild from "npm:esbuild@0.27.4";
-import * as tailwind from "npm:tailwindcss@4.2.1";
-import * as oxide from "npm:oxide-wasm@0.1.1";
 
-const oxideWasm = oxide.init();
-const buildPipe = Promise.withResolvers<{ indexHTML: string }>();
+const buildPipeline = Promise.withResolvers<{ indexHTML: string }>();
 
 export type BuildOptions = {
   dir?: string;
@@ -68,36 +65,68 @@ export async function build(options?: BuildOptions) {
     };
   };
 
-  const tw = {
-    entryCSS: null as null | { filename: string; etag?: string },
-    builtCSS: null as null | string,
-    files: new Map<string, number>(),
-    candidates: new Set<string>(),
-    compiler: null as null | Awaited<ReturnType<typeof tailwind.compile>>,
-    async build() {
-      if (!this.entryCSS) {
-        return;
-      }
-      const filename = join(workDir, this.entryCSS.filename);
-      const stats = await lstat(filename);
-      const etag = stats.mtime.getTime() + "-" + stats.size;
-      if (!this.compiler || this.entryCSS.etag !== etag) {
-        let entryCSS = await readFile(filename, "utf8");
-        this.compiler = await tailwind.compile(entryCSS, {
-          async loadStylesheet(id, base) {
-            if (id === "tailwindcss") {
-              const path = join(workDir, "node_modules/tailwindcss/index.css");
-              const content = await readFile(path, "utf8");
-              return { path, base, content };
+  let tailwindEntryCSS = null;
+  for (let filename of styleLinks) {
+    const css = await readFile(join(workDir, filename), "utf8");
+    if (css.search(/@import\s+["']tailwindcss["']/) !== -1) {
+      tailwindEntryCSS = filename;
+      break;
+    }
+  }
+
+  let tw: {
+    entryCSS: { filename: string; etag?: string };
+    builtCSS: null | string;
+    build: () => Promise<void>;
+    extractCandidatesFrom: (filename: string) => Promise<void>;
+  } | undefined;
+
+  if (tailwindEntryCSS) {
+    const tailwind = import("npm:tailwindcss@4.2.1");
+    const oxide = import("npm:oxide-wasm@0.1.1").then(m => m.init().then(() => m));
+    const builder = {
+      entryCSS: { filename: tailwindEntryCSS } as { filename: string; etag?: string },
+      builtCSS: null as null | string,
+      files: new Map<string, number>(),
+      candidates: new Set<string>(),
+      compiler: null as null | Awaited<ReturnType<Awaited<typeof tailwind>["compile"]>>,
+      async build() {
+        const filename = join(workDir, this.entryCSS.filename);
+        const stats = await lstat(filename);
+        const etag = stats.mtime.getTime() + "-" + stats.size;
+        if (!this.compiler || this.entryCSS.etag !== etag) {
+          let entryCSS = await readFile(filename, "utf8");
+          this.compiler = await (await tailwind).compile(entryCSS, {
+            async loadStylesheet(id, base) {
+              if (id === "tailwindcss") {
+                const path = join(workDir, "node_modules/tailwindcss/index.css");
+                const content = await readFile(path, "utf8");
+                return { path, base, content };
+              }
+              throw new Error("not found: " + id);
+            },
+          });
+          this.entryCSS.etag = etag;
+        }
+        this.builtCSS = this.compiler.build([...this.candidates]);
+      },
+      async extractCandidatesFrom(filename: string) {
+        const stats = await lstat(filename);
+        const modtime = stats.mtime.getTime();
+        const prev = this.files.get(filename);
+        if (prev === undefined || prev !== modtime) {
+          for (const candidate of (await oxide).extract(await readFile(filename, "utf8"))) {
+            if (!this.candidates.has(candidate)) {
+              this.candidates.add(candidate);
+              this.builtCSS = null;
             }
-            throw new Error("not found: " + id);
-          },
-        });
-        this.entryCSS.etag = etag;
-      }
-      this.builtCSS = this.compiler.build([...this.candidates]);
-    },
-  };
+          }
+          this.files.set(filename, modtime);
+        }
+      },
+    };
+    tw = builder;
+  }
 
   const resolvePlugin: esbuild.Plugin = {
     name: "resolver",
@@ -118,19 +147,7 @@ export async function build(options?: BuildOptions) {
           }
         }
         if (filename.endsWith(".tsx") || filename.endsWith(".jsx")) {
-          const stats = await lstat(filename);
-          const modtime = stats.mtime.getTime();
-          const prev = tw.files.get(filename);
-          if (prev === undefined || prev !== modtime) {
-            await oxideWasm;
-            for (const candidate of oxide.extract(await readFile(filename, "utf8"))) {
-              if (!tw.candidates.has(candidate)) {
-                tw.candidates.add(candidate);
-                tw.builtCSS = null;
-              }
-            }
-            tw.files.set(filename, modtime);
-          }
+          await tw?.extractCandidatesFrom(filename);
         }
         return {};
       });
@@ -161,22 +178,13 @@ export async function build(options?: BuildOptions) {
     plugins: [resolvePlugin],
   });
 
-  for (let filename of styleLinks) {
-    const css = await readFile(join(workDir, filename), "utf8");
-    if (css.search(/@import\s+["']tailwindcss["']/) !== -1) {
-      tw.entryCSS = { filename };
-    }
-  }
-
   if (dev) {
     await ctx.serve({ port: dev.port });
     await ctx.watch();
-    dev.signal?.addEventListener("abort", () => {
-      ctx.dispose();
-    });
-    buildPipe.resolve({
-      indexHTML,
-    });
+    if (dev.signal) {
+      dev.signal.addEventListener("abort", ctx.dispose.bind(ctx));
+    }
+    buildPipeline.resolve({ indexHTML });
   } else {
     const result = await ctx.rebuild();
     await ctx.dispose();
@@ -189,7 +197,7 @@ export async function build(options?: BuildOptions) {
         const filename = relative(outdir, file.path);
         vfs[filename] = await createVFile(filename, file.text, contentType + "; charset=utf-8");
       }
-      if (tw.entryCSS) {
+      if (tw) {
         await tw.build();
         if (tw.builtCSS) {
           const filename = tw.entryCSS.filename;
@@ -197,7 +205,7 @@ export async function build(options?: BuildOptions) {
         }
       }
       for (const filename of styleLinks) {
-        if (filename !== tw.entryCSS?.filename) {
+        if (filename !== tw?.entryCSS.filename) {
           const content = await bundleCSS(join(workDir, filename));
           vfs[filename] = await createVFile(filename, content, "text/css");
         }
