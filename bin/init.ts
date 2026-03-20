@@ -1,7 +1,8 @@
 import process from "node:process";
+import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
-import { spawnSync } from "node:child_process";
+import { createInterface } from "node:readline/promises";
 
 const files = {
   "package.json": JSON.stringify(
@@ -12,6 +13,7 @@ const files = {
       scripts: {
         dev: "mono-jsx-dom dev",
         build: "mono-jsx-dom build",
+        start: "Bun" in globalThis ? "mono-jsx-dom build && bun dist/server.mjs" : "mono-jsx-dom build --node && node dist/server.mjs",
       },
     },
     null,
@@ -49,7 +51,7 @@ document.body.mount(<App />);
   "server.ts": `import server from "mono-jsx-dom/server";
 
 export default {
-  fetch(req: Request, env: Env) {
+  fetch(req: Request) {
     const url = new URL(req.url);
     if (url.pathname === "/data/word") {
       return new Response("world")
@@ -60,21 +62,29 @@ export default {
 `,
 };
 
-function install(cwd: string) {
-  let npm = "npm";
+function install(cwd: string, withTailwind: boolean) {
+  let cmd = "npm";
   if ("Bun" in globalThis) {
-    npm = "bun";
+    cmd = "bun";
   }
-  spawnSync(npm, ["add", "mono-jsx-dom"], { stdio: "pipe", cwd });
-  spawnSync(npm, ["add", "-D", "esbuild", "tailwindcss", "oxide-wasm"], { stdio: "pipe", cwd });
-  return npm;
+  spawnSync(cmd, ["add", "mono-jsx-dom"], { cwd });
+  spawnSync(cmd, ["add", "-D", "esbuild"], { cwd });
+  if (withTailwind) {
+    spawnSync(cmd, ["add", "-D", "tailwindcss", "oxide-wasm"], { cwd });
+  }
+  return cmd;
 }
 
 export async function init(appName = "mono-app") {
   const cwd = join(process.cwd(), appName);
+  const scaffold = { ...files };
+  const withTailwind = await confirm("Use TailwindCSS for styling?");
+  if (!withTailwind) {
+    scaffold["app/style.css"] = "/* app styles */\n";
+  }
   await ensureDir(cwd);
   await Promise.all(
-    Object.entries(files).map(async ([filename, content]) => {
+    Object.entries(scaffold).map(async ([filename, content]) => {
       const filepath = join(cwd, filename);
       if (filename === "package.json") {
         content = JSON.stringify({ ...JSON.parse(content), name: appName }, null, 2);
@@ -101,12 +111,15 @@ export async function init(appName = "mono-app") {
   compilerOptions.jsx = "react-jsx";
   compilerOptions.jsxImportSource = "mono-jsx-dom";
   await writeFile(join(cwd, "tsconfig.json"), JSON.stringify(tsConfig, null, 2));
-  const npm = install(cwd);
-  console.log("\x1b[32m✅ Setup complete.\x1b[0m");
+  const cmd = install(cwd, withTailwind);
+  const isBun = cmd === "bun";
+  console.log("✨ \x1b[32mSetup completed.\x1b[0m");
+  console.log("You can now start or build the app with the following commands:");
   console.log("");
   console.log(`cd ${appName}`);
-  console.log(`${npm} run dev   \x1b[90m# start the app in development mode.\x1b[0m`);
-  console.log(`${npm} run build \x1b[90m# build the app for production.\x1b[0m`);
+  console.log(`${cmd} dev${isBun ? "    " : ""}   \x1b[90m# start the app in development mode.\x1b[0m`);
+  console.log(`${cmd} start${isBun ? "    " : ""} \x1b[90m# build and start the app in production mode.\x1b[0m`);
+  console.log(`${cmd}${isBun ? " run" : ""} build \x1b[90m# build the app for production.\x1b[0m`);
   console.log("");
 }
 
@@ -124,5 +137,19 @@ async function ensureDir(path: string) {
     await access(path);
   } catch {
     await mkdir(path, { recursive: true });
+  }
+}
+
+async function confirm(prompt: string): Promise<boolean> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const line = await rl.question("\x1b[34m?\x1b[0m " + prompt + " \x1b[90m(y/N)\x1b[0m ");
+    const yes = /^y(es)?$/i.test(line.trim());
+    if (process.stdout.isTTY) {
+      process.stdout.write("\x1b[1A\x1b[2K\r");
+    }
+    return yes;
+  } finally {
+    rl.close();
   }
 }
