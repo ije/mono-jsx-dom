@@ -16,12 +16,6 @@
 
 Playground: https://val.town/x/ije/mono-jsx-dom
 
-## Installation
-
-```bash
-npm install mono-jsx-dom
-```
-
 ## Getting Started
 
 You can run the `mono-jsx-dom int` command to initialize a project with mono-jsx-dom boilerplate.
