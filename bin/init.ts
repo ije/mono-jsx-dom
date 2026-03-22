@@ -2,7 +2,7 @@ import { argv, cwd } from "node:process";
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
-import { confirm, ensureDir, exists } from "./utils.ts";
+import { confirm, ensureDir, exists, input } from "./utils.ts";
 
 const bun = "Bun" in globalThis;
 
@@ -18,9 +18,9 @@ const template = {
       version: "0.0.0",
       private: true,
       scripts: {
-        dev: "mono-jsx-dom dev",
-        build: "mono-jsx-dom build",
-        start: bun ? "mono-jsx-dom build && bun dist/server.mjs" : "mono-jsx-dom build --node && node dist/server.mjs",
+        dev: (bun ? "bun --bun" : "") + " mono-jsx-dom dev",
+        build: (bun ? "bun --bun" : "") + " mono-jsx-dom build",
+        start: bun ? "bun --bun mono-jsx-dom build && bun dist/server.mjs" : "mono-jsx-dom build --node && node dist/server.mjs",
       },
     },
     null,
@@ -69,8 +69,8 @@ export default {
 `,
 };
 
-export function run() {
-  const appName = argv[3] ?? "mono-app";
+export async function run() {
+  const appName = argv[3] ?? await input("Enter the name of the app:", "mono-app");
   return init(appName);
 }
 
