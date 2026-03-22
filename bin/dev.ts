@@ -147,7 +147,7 @@ export async function dev(options?: DevOptions) {
   };
 
   if (!isBun) {
-    const [major, minor] = versions.node.slice(1).split(".").map(Number);
+    const [major, minor] = versions.node.split(".").map(Number);
     if (major < 22 || (major === 22 && minor < 18)) {
       console.error("Node.js version 22.18.0 or higher is required to use the dev command.");
       exit(1);
