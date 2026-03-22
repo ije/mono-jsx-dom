@@ -70,7 +70,7 @@ export default {
 };
 
 export async function run() {
-  const appName = argv[3] ?? await input("Enter the name of the app:", "mono-app");
+  const appName = argv[3] ?? await input("Enter the name of the app", "mono-app");
   return init(appName);
 }
 
