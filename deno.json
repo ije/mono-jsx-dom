@@ -16,7 +16,8 @@
   "tasks": {
     "build": "deno run -A --no-lock scripts/build.ts",
     "test": "deno task build && deno test -A --no-lock test/integration.test.tsx",
-    "test:cli": "deno task build && bun scripts/cli-test.ts",
+    "test:dev": "deno task build && bun test/dev.test.ts",
+    "test:build": "deno task build && bun test/build.test.ts",
     "fmt": "dprint fmt"
   },
   "lint": {

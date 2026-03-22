@@ -1,19 +1,18 @@
 #!/usr/bin/env node
 
-import {process} from "node:process";
+import { argv, exit } from "node:process";
 
-switch (process.argv[2]) {
+switch (argv[2]) {
   case "init":
-    import("./init.mjs").then(({ init }) => init())
+    import("./init.mjs").then(command => command.run())
     break;
   case "dev":
-    import("./dev.mjs").then(({ dev }) => dev())
+    import("./dev.mjs").then(command => command.run())
     break;
   case "build": {
-    const runtime = process.argv.includes("--node") ? "node" : "fetch-server";
-    import("./build.mjs").then(({ build }) => build({ runtime }))
+    import("./build.mjs").then(command => command.run( ))
     break;
   }
   default:
-    process.exit(0);
+    exit(0);
 }

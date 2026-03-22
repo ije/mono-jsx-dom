@@ -1,13 +1,13 @@
 export type VFile = {
-  content: string | ArrayBuffer;
+  content: string | Uint8Array<any>;
   contentType: string;
-  hash: string;
+  contentHash?: string;
   lastModified: number;
 };
 
 export type VFS = {
   has: (filename: string) => boolean;
-  get: (filename: string) => VFile | undefined;
+  get: (filename: string) => string | URL | VFile | undefined;
 };
 
 export type ASSETS = {

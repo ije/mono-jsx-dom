@@ -6,8 +6,12 @@ type Fetch = (request: Request) => Response | Promise<Response>;
 
 function createRequestListener(fetch: Fetch, options?: ServeOptions) {
   const onError = options?.onError ?? defaultErrorHandler;
+  const idleTimeout = options?.idleTimeout;
   return async (req: IncomingMessage, res: ServerResponse) => {
     let response;
+    if (idleTimeout !== undefined) {
+      req.socket.setTimeout(idleTimeout * 1000);
+    }
     try {
       response = await fetch(createRequest(req, res, options));
     } catch (error) {
@@ -125,12 +129,13 @@ export type ServeOptions = {
   port?: number;
   hostname?: string;
   signal?: AbortSignal;
+  idleTimeout?: number;
   fetch: (req: Request) => Response | Promise<Response>;
   onError?: (error: Error) => Response | Promise<Response>;
 };
 
-export function serve(options: ServeOptions) {
-  const port = options?.port ?? 3000;
+export function serve(options: ServeOptions): Promise<{ port: number }> {
+  const port = options?.port ?? getDefaultPort();
   const server = createServer(createRequestListener(options.fetch, options));
   server.listen(port, options?.hostname, () => {
     console.log(`Server is running on http://${options?.hostname ?? "localhost"}:${port}`);
@@ -138,4 +143,22 @@ export function serve(options: ServeOptions) {
   options?.signal?.addEventListener("abort", () => {
     server.close();
   });
+  return new Promise((resolve, reject) => {
+    server.on("listening", () => resolve({ port }));
+    server.on("error", reject);
+  });
+}
+
+function getDefaultPort() {
+  // deno-lint-ignore no-process-global
+  const args = process.argv.slice(2);
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg.startsWith("--port=")) {
+      return parseInt(arg.slice(7));
+    } else if (arg === "--port" && i + 1 < args.length) {
+      return parseInt(args[i + 1]);
+    }
+  }
+  return 3000;
 }

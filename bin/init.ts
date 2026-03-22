@@ -1,12 +1,17 @@
-import process from "node:process";
+import { argv, cwd } from "node:process";
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
-import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { createInterface } from "node:readline/promises";
+import { readFile, writeFile } from "node:fs/promises";
+import { confirm, ensureDir, exists } from "./utils.ts";
 
 const bun = "Bun" in globalThis;
 
 const template = {
+  ".gitignore": [
+    ".DS_Store",
+    "node_modules/",
+    "dist/",
+  ].join("\n"),
   "package.json": JSON.stringify(
     {
       name: "mono-app",
@@ -64,8 +69,13 @@ export default {
 `,
 };
 
-export async function init(appName = "mono-app") {
-  const appDir = join(process.cwd(), appName);
+export function run() {
+  const appName = argv[3] ?? "mono-app";
+  return init(appName);
+}
+
+export async function init(appName: string) {
+  const appDir = join(cwd(), appName);
   if (await exists(appDir) && !(await confirm(`Directory ${appName} already exists. Overwrite?`))) {
     return;
   }
@@ -74,7 +84,7 @@ export async function init(appName = "mono-app") {
   const withTailwind = await confirm("Use TailwindCSS for styling?");
   const withWrangler = await confirm("Add Cloudflare Workers integration?");
   if (withWrangler) {
-    scaffold["wrangler.json"] = JSON.stringify(
+    scaffold["wrangler.jsonc"] = JSON.stringify(
       {
         $schema: "./node_modules/wrangler/config-schema.json",
         name: appName,
@@ -100,7 +110,15 @@ export async function init(appName = "mono-app") {
     Object.entries(scaffold).map(async ([filename, content]) => {
       const filepath = join(appDir, filename);
       if (filename === "package.json") {
-        content = JSON.stringify({ ...JSON.parse(content), name: appName }, null, 2);
+        const pkg = JSON.parse(content);
+        pkg.name = appName;
+        if (withWrangler) {
+          pkg.scripts.dev = "wrangler dev";
+          pkg.scripts.deploy = "wrangler deploy";
+          delete pkg.scripts.build;
+          delete pkg.scripts.start;
+        }
+        content = JSON.stringify(pkg, null, 2);
       }
       if (!await exists(filepath)) {
         await ensureDir(dirname(filepath));
@@ -126,6 +144,7 @@ export async function init(appName = "mono-app") {
   compilerOptions.jsxImportSource = "mono-jsx-dom";
   await writeFile(join(appDir, "tsconfig.json"), JSON.stringify(tsConfig, null, 2));
 
+  console.log("\x1b[90mInstalling dependencies...\x1b[0m");
   const cmd = install(appDir, withTailwind, withWrangler);
   const isBun = cmd === "bun";
 
@@ -134,9 +153,13 @@ export async function init(appName = "mono-app") {
   console.log("You can now start or build the app with the following commands:");
   console.log("");
   console.log(`cd ${appName}`);
-  console.log(`${cmd} dev${isBun ? "    " : ""}   \x1b[90m# start the app in development mode.\x1b[0m`);
-  console.log(`${cmd} start${isBun ? "    " : ""} \x1b[90m# build and start the app in production mode.\x1b[0m`);
-  console.log(`${cmd}${isBun ? " run" : ""} build \x1b[90m# build the app for production.\x1b[0m`);
+  console.log(`${cmd} dev${isBun ? "    " : ""}    \x1b[90m# start the app in development mode.\x1b[0m`);
+  if (withWrangler) {
+    console.log(`${cmd}${isBun ? " run" : ""} deploy \x1b[90m# deploy the app to Cloudflare Workers.\x1b[0m`);
+  } else {
+    console.log(`${cmd}${isBun ? " run" : ""} build  \x1b[90m# build the app for production.\x1b[0m`);
+    console.log(`${cmd} start${isBun ? "    " : ""}  \x1b[90m# build and start the app in production mode.\x1b[0m`);
+  }
   console.log("");
 }
 
@@ -146,45 +169,16 @@ function install(cwd: string, withTailwind: boolean, withWrangler: boolean) {
     cmd = "bun";
   }
   spawnSync(cmd, ["add", "mono-jsx-dom"], { cwd });
-  spawnSync(cmd, ["add", "-D", "esbuild"], { cwd });
+  const devDeps = ["esbuild"];
   if (withTailwind) {
-    spawnSync(cmd, ["add", "-D", "tailwindcss", "oxide-wasm"], { cwd });
+    devDeps.push("tailwindcss", "oxide-wasm");
   }
   if (withWrangler) {
-    spawnSync(cmd, ["add", "-D", "wrangler"], { cwd });
+    devDeps.push("wrangler");
+  }
+  spawnSync(cmd, ["add", "-D", ...devDeps], { cwd });
+  if (withWrangler) {
     spawnSync(cmd, ["wrangler", "types"], { cwd });
   }
   return cmd;
-}
-
-async function confirm(prompt: string): Promise<boolean> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  try {
-    const line = await rl.question("\x1b[34m?\x1b[0m " + prompt + " \x1b[90m(y/N)\x1b[0m ");
-    const yes = /^y(es)?$/i.test(line.trim());
-    if (process.stdout.isTTY) {
-      const answer = yes ? "\x1b[32myes\x1b[0m" : "\x1b[90mno\x1b[0m";
-      process.stdout.write(`\x1b[1A\r\x1b[34m?\x1b[0m ${prompt} ${answer}\x1b[K\n`);
-    }
-    return yes;
-  } finally {
-    rl.close();
-  }
-}
-
-async function exists(path: string) {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function ensureDir(path: string) {
-  try {
-    await access(path);
-  } catch {
-    await mkdir(path, { recursive: true });
-  }
 }
