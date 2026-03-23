@@ -5,14 +5,6 @@ import { lstat, readFile, writeFile } from "node:fs/promises";
 import * as esbuild from "npm:esbuild@0.27.4";
 import { ensureDir, exists, parseFlags, resolveModule } from "./utils.ts";
 
-export async function run() {
-  const flags = parseFlags();
-  const start = performance.now();
-  const runtime = flags.node as "node" | "fetch-server" | undefined ?? "fetch-server";
-  await build({ serverType: runtime });
-  console.log("\x1b[32m✨ Build completed.\x1b[0m", "\x1b[90m(%d ms)\x1b[0m", performance.now() - start);
-}
-
 export type BuildContext = {
   readonly indexHTML: IndexHTML;
   readonly tw?: TailwindBuilder;
@@ -170,7 +162,15 @@ export async function build(options?: BuildOptions) {
   await dispose();
 }
 
-export async function buildServerJS(
+export async function run() {
+  const flags = parseFlags();
+  const start = performance.now();
+  const serverType = flags.node ? "node" : "fetch-server";
+  await build({ serverType });
+  console.log("\x1b[32m✨ Build completed.\x1b[0m", "\x1b[90m(" + Math.ceil(performance.now() - start) + " ms)\x1b[0m");
+}
+
+async function buildServerJS(
   workDir: string,
   outdir: string,
   serverType: BuildOptions["serverType"] = "fetch-server",
@@ -189,7 +189,7 @@ export async function buildServerJS(
         stdin.sourcefile = join(workDir, "server-node.mjs");
         stdin.resolveDir = workDir;
         stdin.contents = [
-          'import { serve$ } from "mono-jsx-dom/server/node-fetch-server";',
+          'import { serve as serve$ } from "mono-jsx-dom/node-fetch-server";',
           'import server$ from "./server.' + loader + '";',
           "serve$(server$);",
         ].join("\n");
@@ -214,7 +214,7 @@ export async function buildServerJS(
     platform: "node",
     format: "esm",
     target: "es2024",
-    external: ["mono-jsx-dom/server", "mono-jsx-dom/server/node-fetch-server"],
+    external: ["mono-jsx-dom/server", "mono-jsx-dom/node-fetch-server"],
   };
   if (extraJS) {
     esbOptions.banner = { js: extraJS };

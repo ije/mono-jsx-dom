@@ -77,6 +77,7 @@ if (import.meta.main) {
       "server/index",
       "server/workerd",
       "server/node-fetch-server",
+      "server/node-server-hooks",
     ]
   ) {
     const { size, gzippedSize } = await buildPackageModule(moduleName, "esm");

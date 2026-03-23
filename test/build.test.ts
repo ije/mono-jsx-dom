@@ -18,7 +18,7 @@ Deno.test("build", { sanitizeOps: false, sanitizeResources: false }, async () =>
   assertStringIncludes(serverJs, 'import server$ from "mono-jsx-dom/server";');
   assertStringIncludes(serverJs, 'import buildJSON$ from "./build.json" with { type: "json" };');
   assertStringIncludes(serverJs, "server$.setVFS(new Map(Object.entries(buildJSON$)));");
-  assertStringIncludes(serverJs, 'from"mono-jsx-dom/server/node-fetch-server";');
+  assertStringIncludes(serverJs, 'from"mono-jsx-dom/node-fetch-server";');
 
   const buildJSON = JSON.parse(await Deno.readTextFile(join(cwd(), appName, "dist", "build.json")));
   assertEquals(Object.keys(buildJSON).length, 3);

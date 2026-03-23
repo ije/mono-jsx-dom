@@ -135,6 +135,7 @@ export async function dev(options?: DevOptions) {
       ?? join(workDir, "node_modules/mono-jsx-dom/server/index.mjs");
     const args = ["--watch", serverScript];
     if (runtime === "node") {
+      args.unshift("--import", "mono-jsx-dom/node-server-hooks");
       args.push("--port", port.toString());
     } else {
       args.unshift("--port", port.toString());

@@ -35,9 +35,13 @@
       "node": "./server/index.mjs",
       "import": "./server/index.mjs"
     },
-    "./server/node-fetch-server": {
+    "./node-fetch-server": {
       "node": "./server/node-fetch-server.mjs",
       "import": "./server/node-fetch-server.mjs"
+    },
+    "./node-server-hooks": {
+      "node": "./server/node-server-hooks.mjs",
+      "import": "./server/node-server-hooks.mjs"
     }
   },
   "scripts": {

@@ -17,6 +17,7 @@ const template = {
       name: "mono-app",
       version: "0.0.0",
       private: true,
+      type: "module",
       scripts: {
         dev: (bun ? "bun --bun " : "") + "mono-jsx-dom dev",
         build: (bun ? "bun --bun " : "") + "mono-jsx-dom build",
@@ -92,12 +93,12 @@ export async function run() {
   console.log("You can now start or build the app with the following commands:");
   console.log("");
   console.log(`cd ${appName}`);
-  console.log(`${npmCmd} dev${bun ? "    " : ""}    \x1b[90m# start the app in development mode.\x1b[0m`);
+  console.log(`${npmCmd} run dev    \x1b[90m# start the app in development mode.\x1b[0m`);
   if (wrangler) {
-    console.log(`${npmCmd}${bun ? " run" : ""} deploy \x1b[90m# deploy the app to Cloudflare Workers.\x1b[0m`);
+    console.log(`${npmCmd} run deploy \x1b[90m# deploy the app to Cloudflare Workers.\x1b[0m`);
   } else {
-    console.log(`${npmCmd}${bun ? " run" : ""} build  \x1b[90m# build the app for production.\x1b[0m`);
-    console.log(`${npmCmd} start${bun ? "    " : ""}  \x1b[90m# build and start the app in production mode.\x1b[0m`);
+    console.log(`${npmCmd} run build  \x1b[90m# build the app for production.\x1b[0m`);
+    console.log(`${npmCmd} run start  \x1b[90m# build and start the app in production mode.\x1b[0m`);
   }
   console.log("");
 }
