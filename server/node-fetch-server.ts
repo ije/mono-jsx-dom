@@ -131,16 +131,21 @@ export type ServeOptions = {
   signal?: AbortSignal;
   idleTimeout?: number;
   fetch: (req: Request) => Response | Promise<Response>;
+  onListen?: (localAddress: { port: number }) => void;
   onError?: (error: Error) => Response | Promise<Response>;
 };
 
 export function serve(options: ServeOptions): Promise<{ port: number }> {
-  const port = options?.port ?? getDefaultPort();
-  const server = createServer(createRequestListener(options.fetch, options));
+  const { port = getDefaultPort(), hostname, signal, fetch, onListen } = options;
+  const server = createServer(createRequestListener(fetch, options));
   server.listen(port, options?.hostname, () => {
-    console.log(`Server is running on http://${options?.hostname ?? "localhost"}:${port}`);
+    if (onListen) {
+      onListen({ port });
+    } else {
+      console.log(`Server is running on http://${hostname ?? "localhost"}:${port}`);
+    }
   });
-  options?.signal?.addEventListener("abort", () => {
+  signal?.addEventListener("abort", () => {
     server.close();
   });
   return new Promise((resolve, reject) => {

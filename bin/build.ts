@@ -9,7 +9,7 @@ export async function run() {
   const flags = parseFlags();
   const start = performance.now();
   const runtime = flags.node as "node" | "fetch-server" | undefined ?? "fetch-server";
-  await build({ runtime });
+  await build({ serverType: runtime });
   console.log("\x1b[32m✨ Build completed.\x1b[0m", "\x1b[90m(%d ms)\x1b[0m", performance.now() - start);
 }
 
@@ -31,10 +31,10 @@ export type TailwindBuilder = {
 };
 
 export type BuildOptions = {
-  dir?: string;
+  appName?: string;
   outdir?: string;
   target?: string;
-  runtime?: "node" | "fetch-server";
+  serverType?: "node" | "fetch-server";
   dev?: {
     signal?: AbortSignal;
     onWatch?: (ctx: BuildContext) => void;
@@ -42,7 +42,7 @@ export type BuildOptions = {
 };
 
 export async function build(options?: BuildOptions) {
-  const workDir = join(cwd(), options?.dir ?? ".");
+  const workDir = join(cwd(), options?.appName ?? ".");
   const outdir = join(workDir, options?.outdir ?? "dist");
   if (!await exists(join(workDir, "index.html"))) {
     console.error("index.html not found");
@@ -147,7 +147,9 @@ export async function build(options?: BuildOptions) {
   for (const file of outputFiles) {
     const contentType = file.path.endsWith(".js") ? "application/javascript" : "text/css";
     const filename = relative(outdir, file.path);
-    vfs[filename] = await createVFile(indexHTML, filename, file.text, contentType);
+    if (filename !== tw?.entryCSS) {
+      vfs[filename] = await createVFile(indexHTML, filename, file.text, contentType);
+    }
   }
   if (tw) {
     const css = await tw.build();
@@ -163,7 +165,7 @@ export async function build(options?: BuildOptions) {
     'import buildJSON$ from "./build.json" with { type: "json" };',
     "server$.setVFS(new Map(Object.entries(buildJSON$)));",
   ].join("");
-  await buildServerJS(workDir, outdir, options?.runtime, extraJS);
+  await buildServerJS(workDir, outdir, options?.serverType, extraJS);
 
   await dispose();
 }
@@ -171,7 +173,7 @@ export async function build(options?: BuildOptions) {
 export async function buildServerJS(
   workDir: string,
   outdir: string,
-  runtime: BuildOptions["runtime"] = "fetch-server",
+  serverType: BuildOptions["serverType"] = "fetch-server",
   extraJS?: string,
   watch?: { signal?: AbortSignal; onRebuild?: (result: esbuild.BuildResult) => void },
 ) {
@@ -183,7 +185,7 @@ export async function buildServerJS(
   for (const loader of ["ts", "tsx", "js", "jsx"] as const) {
     const sourcefile = join(workDir, "server." + loader);
     if (await exists(sourcefile)) {
-      if (runtime === "node") {
+      if (serverType === "node") {
         stdin.sourcefile = join(workDir, "server-node.mjs");
         stdin.resolveDir = workDir;
         stdin.contents = [
@@ -234,6 +236,7 @@ export async function buildServerJS(
   } else {
     await ctx.rebuild();
     await ctx.dispose();
+    await esbuild.stop();
   }
 }
 
@@ -300,7 +303,7 @@ async function paseIndexHtml(workDir: string): Promise<IndexHTML> {
     }
     const relativePath = relative(workDir, join(workDir, href));
     entryPoints[relativePath] = relativePath;
-    return `<link${attrs} href="/${relativePath}">`;
+    return `<link${attrs}href="/${relativePath}">`;
   });
 
   // search js scripts
@@ -311,7 +314,7 @@ async function paseIndexHtml(workDir: string): Promise<IndexHTML> {
     const relativePath = relative(workDir, join(workDir, src));
     const resolvedPath = relativePath.slice(0, relativePath.lastIndexOf(".")) + ".js";
     entryPoints[relativePath] = resolvedPath;
-    return `<script${attrs} src="/${resolvedPath}">`;
+    return `<script${attrs}src="/${resolvedPath}">`;
   });
 
   return { content, entryPoints };
@@ -325,7 +328,7 @@ async function createVFile(indexHTML: IndexHTML, filename: string, content: stri
     if (ext !== ".css" && ext !== ".js") {
       filename = filename.slice(0, -ext.length) + ".js";
     }
-    indexHTML.content = indexHTML.content.replace('"/' + filename + '"', '"/' + filename + "?hash=" + hash.slice(0, 8) + '"');
+    indexHTML.content = indexHTML.content.replace('"/' + filename + '"', '"/' + filename + "?hash=" + contentHash.slice(0, 8) + '"');
   }
   return {
     content,

@@ -14,6 +14,11 @@ async function buildPackageModule(name: string, format: "esm" | "cjs" = "esm") {
     plugins: [{
       name: "npm-specifier",
       setup(b) {
+        b.onResolve({ filter: /\/build.ts$/ }, (args) => {
+          if (entryPointPath.endsWith("/dev.ts")) {
+            return { path: args.path.replace(/\.ts$/, ".mjs"), external: true };
+          }
+        });
         b.onResolve({ filter: /^npm:.+/ }, (args) => {
           const path = args.path.slice(4).split("@", 1)[0];
           return { path, external: true };

@@ -10,7 +10,7 @@ switch (argv[2]) {
     import("./dev.mjs").then(command => command.run())
     break;
   case "build": {
-    import("./build.mjs").then(command => command.run( ))
+    import("./build.mjs").then(command => command.run())
     break;
   }
   default:

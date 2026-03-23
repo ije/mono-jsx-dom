@@ -4,20 +4,19 @@ import { cwd, env, exit, versions } from "node:process";
 import { join, relative } from "node:path";
 import { spawn } from "node:child_process";
 import { parseFlags, resolveModule } from "./utils.ts";
-
-// external modules, do not remove the `.mjs` extension
-import { build } from "./build.mjs";
+import { build } from "./build.ts";
 
 export type DevOptions = {
-  dir?: string;
+  ac?: AbortController;
+  appName?: string;
   outdir?: string;
   port?: number;
 };
 
 export async function dev(options?: DevOptions) {
-  const ac = new AbortController();
-  const isBun = "Bun" in globalThis;
-  const workDir = join(cwd(), options?.dir ?? ".");
+  const runtime = "Deno" in globalThis ? "deno" : "Bun" in globalThis ? "bun" : "node";
+  const ac = options?.ac ?? new AbortController();
+  const workDir = join(cwd(), options?.appName ?? ".");
   const outdir = join(workDir, options?.outdir ?? "dist");
   const port = options?.port ?? 3000;
   const devServerPort = 8798;
@@ -44,7 +43,11 @@ export async function dev(options?: DevOptions) {
     // start dev server
     await serve({
       port: devServerPort,
+      hostname: "localhost",
       idleTimeout: 32, // 32 seconds
+      onListen: (_localAddress) => {
+        // quit dev server
+      },
       fetch: async (req: Request) => {
         const { pathname } = new URL(req.url);
         if (pathname === "/__dev_vfs.json") {
@@ -130,23 +133,37 @@ export async function dev(options?: DevOptions) {
 
     const serverScript = (await resolveModule(join(workDir, "server"), [".ts", ".mjs", ".js"]))
       ?? join(workDir, "node_modules/mono-jsx-dom/server/index.mjs");
+    const args = ["--watch", serverScript];
+    if (runtime === "node") {
+      args.push("--port", port.toString());
+    } else {
+      args.unshift("--port", port.toString());
+    }
+    if (runtime === "deno") {
+      args.unshift("serve", "-A");
+    }
     const serverProcess = spawn(
-      isBun ? "bun" : "node",
-      ["--watch", serverScript, "--port", port.toString()],
+      runtime,
+      args,
       {
         cwd: workDir,
         env: { ...env, DEV_SERVER: devServerUrl },
         stdio: "inherit",
       },
     );
-    serverProcess.on("close", () => ac.abort());
+    const onClose = () => ac.abort();
+    serverProcess.on("close", onClose);
+    ac.signal.addEventListener("abort", () => {
+      serverProcess.off("close", onClose);
+      serverProcess.kill();
+    });
   };
   const onError = (error: Error) => {
     console.error(error);
     ac.abort();
   };
 
-  if (!isBun) {
+  if (runtime === "node") {
     const [major, minor] = versions.node.split(".").map(Number);
     if (major < 22 || (major === 22 && minor < 18)) {
       console.error("Node.js version 22.18.0 or higher is required to use the dev command.");
@@ -154,8 +171,15 @@ export async function dev(options?: DevOptions) {
     }
   }
 
+  // deno-lint-ignore no-process-global
+  process.on("SIGINT", () => {
+    console.log("\x1b[90mShutting down dev server...\x1b[0m");
+    ac.abort();
+    exit(0);
+  });
+
   await build({
-    dir: options?.dir,
+    appName: options?.appName,
     outdir: options?.outdir,
     dev: {
       signal: ac.signal,
@@ -165,17 +189,33 @@ export async function dev(options?: DevOptions) {
 }
 
 type ServeOptions = {
-  port: number;
   fetch: (req: Request) => Response | Promise<Response>;
+  onListen?: (localAddress: { port: number }) => void;
+  port: number;
+  hostname?: string;
   signal?: AbortSignal;
   idleTimeout?: number;
 };
 
 async function serve(options: ServeOptions) {
+  const denoServe = globalThis.Deno?.serve;
   // @ts-ignore
-  const serve = globalThis.Bun?.serve;
-  if (serve) {
-    const server = serve(options);
+  const bunServe = globalThis.Bun?.serve;
+  if (denoServe) {
+    const { fetch, port, signal, hostname, onListen } = options;
+    denoServe(
+      {
+        port,
+        signal: signal,
+        hostname: hostname,
+        onListen: onListen ?? ((localAddress) => {
+          console.log(`Server is running on http://${hostname ?? "localhost"}:${localAddress.port}`);
+        }),
+      },
+      fetch,
+    );
+  } else if (bunServe) {
+    const server = bunServe(options);
     options.signal?.addEventListener("abort", () => server.stop());
   } else {
     await import("../server/node-fetch-server.mjs").then(m => m.serve(options));
