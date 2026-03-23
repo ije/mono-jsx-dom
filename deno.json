@@ -18,7 +18,7 @@
     "test:integration": "deno task build && deno test -A --no-lock test/integration.test.tsx",
     "test:dev": "deno test -A --no-lock test/dev.test.ts",
     "test:build": "deno test -A --no-lock test/build.test.ts",
-    "test:all": "deno test -A --no-lock test/",
+    "test:all": "deno task build && deno test -A --no-lock test/",
     "fmt": "dprint fmt"
   },
   "lint": {

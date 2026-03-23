@@ -25,5 +25,5 @@ jobs:
       - name: Run linter
         run: deno lint
 
-      - name: Run integration testing
-        run: deno test -A --no-lock test/
+      - name: Run testing
+        run: deno task test:all
