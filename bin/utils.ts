@@ -145,14 +145,15 @@ export function parseFlags() {
     const arg = args[i];
     if (arg.startsWith("--")) {
       if (arg.includes("=")) {
-        const [key, value] = arg.split("=", 2);
+        const [key, value] = arg.slice(2).split("=", 2);
         flags[key] = value;
       } else {
+        const key = arg.slice(2);
         const nextArg = args[i + 1];
         if (!nextArg || nextArg.startsWith("--")) {
-          flags[arg] = true;
+          flags[key] = true;
         } else {
-          flags[arg] = nextArg;
+          flags[key] = nextArg;
           i++;
         }
       }
