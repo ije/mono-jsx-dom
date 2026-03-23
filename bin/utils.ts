@@ -69,6 +69,7 @@ export async function input(prompt: string, placeholder = ""): Promise<string> {
       return text;
     } finally {
       stdin.setRawMode(wasRaw ?? false);
+      stdin.pause();
     }
   }
 
@@ -91,6 +92,7 @@ export async function confirm(prompt: string): Promise<boolean> {
     stdout.write(hint);
     const wasRaw = stdin.isRaw;
     stdin.setRawMode(true);
+    stdin.resume();
     try {
       const yes = await new Promise<boolean>((resolve) => {
         stdin.once("data", (buf: Uint8Array | string) => {
@@ -117,6 +119,7 @@ export async function confirm(prompt: string): Promise<boolean> {
       return yes;
     } finally {
       stdin.setRawMode(wasRaw ?? false);
+      stdin.pause();
     }
   }
 
