@@ -30,7 +30,7 @@ export async function input(prompt: string, placeholder = ""): Promise<string> {
           const chars = typeof buf === "string" ? buf : decoder.decode(buf);
           switch (chars) {
             case "\u0003": // Ctrl+C
-              stdout.write("\x1b[999C\n\x1b[90mcancelled\x1b[0m\n");
+              stdout.write("\x1b[999C\n\x1b[90mCancelled.\x1b[0m\n");
               exit(130);
               return;
             case "\r":
@@ -99,7 +99,7 @@ export async function confirm(prompt: string): Promise<boolean> {
           const c = typeof buf === "string" ? buf.charCodeAt(0) : buf[0]!;
           switch (c) {
             case 3: // Ctrl+C
-              stdout.write("\x1b[999C\n\x1b[90mcancelled\x1b[0m\n");
+              stdout.write("\x1b[999C\n\x1b[90mCancelled.\x1b[0m\n");
               exit(130);
               break;
             case 89: // Y
