@@ -12,6 +12,7 @@
 - 🚦 Signals as reactive primitives
 - 💡 Complete Web API TypeScript definitions
 - ⏳ Streaming rendering
+- 🎨 Builtin [TailwindCSS](https://tailwindcss.com/) integration
 - 🔩 Builtin dev/build/deploy toolchain
 
 Playground: https://val.town/x/ije/mono-jsx-dom
@@ -35,8 +36,9 @@ mono-jsx-dom adds a `mount` method to the `HTMLElement` prototype to allow you t
 ```tsx
 // app.tsx
 
-function App(this: FC) {
-  return <div>Hello, world!</div>;
+async function App(this: FC<{ word: string }>) {
+  this.word = await fetch("/data/word").then(res => res.text());
+  return <div>Hello, {this.word}!</div>;
 }
 
 document.body.mount(<App />);
