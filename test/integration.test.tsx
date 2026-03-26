@@ -263,7 +263,7 @@ Deno.test("signals", sanitizeFalse, async (t) => {
     await page.close();
   });
 
-  await t.step("compiuted signals", async () => {
+  await t.step("computed signals", async () => {
     const testUrl = addTestPage(`
       function App(this: FC<{ count: number }>) {
         this.count = 1;
@@ -663,6 +663,39 @@ Deno.test("signals", sanitizeFalse, async (t) => {
 
     await h1.evaluate((el) => el.click());
     assertEquals(await h1.evaluate((el) => el.textContent), "2");
+
+    await page.close();
+  });
+
+  await t.step("computed rendering", async () => {
+    const testUrl = addTestPage(`
+      function App(this: FC<{ title?: { text: string } }>) {
+        return (
+          <>
+            {this.$(() => this.title && <h1>{this.title.text}</h1>)}
+            <button type="button" onClick={() => this.title = !this.title ? { text: "Welcome to mono-jsx!" } : undefined} >Click me</button>
+          </>
+        );
+      }
+      document.body.mount(<App />);
+    `);
+    const page = await browser.newPage();
+    await page.goto(testUrl);
+
+    let h1 = await page.$("h1");
+    assert(!h1);
+
+    const button = await page.$("button");
+    assert(button);
+    await button.click();
+
+    h1 = await page.$("h1");
+    assert(h1);
+    assertEquals(await h1.evaluate((el: HTMLElement) => el.textContent), "Welcome to mono-jsx!");
+
+    await button.click();
+    h1 = await page.$("h1");
+    assert(!h1);
 
     await page.close();
   });
