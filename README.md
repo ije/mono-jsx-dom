@@ -647,7 +647,7 @@ function App(this: FC) {
 }
 ```
 
-2\. Signals cannot be computed outside of the `this.computed` method.
+2\. Signals would not be computed automatically outside of the `this.computed` method.
 
 ```tsx
 // ❌ Won't work - updates of a signal won't refresh the view
@@ -655,7 +655,7 @@ function App(this: FC<{ message: string }>) {
   this.message = "Welcome to mono-jsx";
   return (
     <div>
-      <h1 title={this.message + "!"}>{this.message + "!"}</h1>
+      <h1>{this.message + "!"}</h1>
       <button onClick={() => this.message = "Clicked"}>
         Click Me
       </button>
@@ -668,10 +668,38 @@ function App(this: FC) {
   this.message = "Welcome to mono-jsx";
   return (
     <div>
-      <h1 title={this.$(() => this.message + "!")}>{this.$(() => this.message + "!")}</h1>
+      <h1>{this.computed(() => this.message + "!")}</h1>
       <button onClick={() => this.message = "Clicked"}>
         Click Me
       </button>
+    </div>
+  )
+}
+```
+
+3\. `this` in nested functions in a component function would not be bound to the component. You can use an arrow function that automatically binds `this` to the component.
+
+```tsx
+function App(this: FC<{ count: number }>) {
+  function increment() {
+    this.count++; // ❌ `this` is not bound to the component.
+  }
+  return (
+    <div>
+      <span>{this.count}</span>
+      <button onClick={increment}>{this.count}</button>
+    </div>
+  )
+}
+
+function App(this: FC) {
+  const increment = () => {
+    this.count++; // ✅ `this` is bound to the component.
+  }
+  return (
+    <div>
+      <span>{this.count}</span>
+      <button onClick={increment}>{this.count}</button>
     </div>
   )
 }
