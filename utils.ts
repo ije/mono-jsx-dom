@@ -14,6 +14,8 @@ export const createTextNode = (text = "") => document.createTextNode(text);
 export const createElement = (tag: string) => document.createElement(tag);
 export const isVNode = (v: unknown): v is VNode => Array.isArray(v) && v.length === 3 && v[2] === $vnode;
 export const onAbort = (signal: AbortSignal | undefined, callback: () => void) => signal?.addEventListener("abort", callback);
+
+/** Sets an attribute on an element. */
 export const setAttribute = (el: Element, name: string, value: unknown) => {
   switch (typeof value) {
     case "boolean":
@@ -25,6 +27,7 @@ export const setAttribute = (el: Element, name: string, value: unknown) => {
       break;
   }
 };
+
 /** calculates the hash code (32-bit) of a string. */
 export const hashCode = (str: string) => {
   let hash = 0;
@@ -34,16 +37,18 @@ export const hashCode = (str: string) => {
   return hash >>> 0;
 };
 
-// Fastest way for creating null-prototype objects in JavaScript
-// copyied from https://github.com/h3js/rou3/blob/main/src/_utils.ts
-// by @pi0
+/**
+ * Fastest way for creating null-prototype objects in JavaScript.
+ * Copyied from https://github.com/h3js/rou3/blob/main/src/_utils.ts
+ */
 export const NullPrototypeObject = /* @__PURE__ */ (() => {
   function ONP() {}
   ONP.prototype = Object.create(null);
   return ONP;
 })() as unknown as { new(): Record<string, any> };
 
-export const createStyleElement = (css: (string | null)[]) => {
+/** Applies the given CSS to the document, and returns the class name of the applied CSS. */
+export const applyCSS = (css: (string | null)[]) => {
   const hash = hashCode(css.join("")).toString(36);
   const className = "css-" + hash;
   if (!document.getElementById(className)) {

@@ -1,7 +1,7 @@
 import type { Atom, ChildType, ComponentType, VNode } from "./types/jsx.d.ts";
 import { customElements } from "./jsx.ts";
 import { isFunction, isPlainObject, isString, isVNode, toHyphenCase } from "./utils.ts";
-import { createElement, createStyleElement, createTextNode } from "./utils.ts";
+import { applyCSS, createElement, createTextNode } from "./utils.ts";
 import { onAbort, setAttribute } from "./utils.ts";
 import { document, NullPrototypeObject, regexpIsNonDimensional } from "./utils.ts";
 import { $fragment, $html } from "./symbols.ts";
@@ -498,7 +498,58 @@ const render = (scope: IScope, child: ChildType, root: HTMLElement | DocumentFra
                       el.style.cssText = attrValue;
                     } else {
                       let mark: Set<Reactive> | undefined = new Set();
-                      let update = () => applyStyle(el, attrValue, mark);
+                      let update = () => {
+                        const { classList } = el;
+                        const style = $(attrValue, mark);
+                        if (isPlainObject(style)) {
+                          let inline: Record<string, unknown> | undefined;
+                          let css: (string | null)[] = [];
+                          for (let [k, v] of Object.entries(style)) {
+                            v = $(v, mark);
+                            switch (k.charCodeAt(0)) {
+                              case /* ':' */ 58:
+                                if (isPlainObject(v)) {
+                                  css.push(k.startsWith("::view-") ? "" : null, k + renderStyle(v, mark));
+                                }
+                                break;
+                              case /* '@' */ 64:
+                                if (isPlainObject(v)) {
+                                  if (k.startsWith("@keyframes ")) {
+                                    css.push(
+                                      k + "{" + Object.entries(v).map(([k, v]) => isPlainObject(v) ? k + renderStyle(v, mark) : "").join("")
+                                        + "}",
+                                    );
+                                  } else if (k.startsWith("@view-")) {
+                                    css.push(k + renderStyle(v, mark));
+                                  } else {
+                                    css.push(k + "{", null, renderStyle(v, mark) + "}");
+                                  }
+                                }
+                                break;
+                              case /* '&' */ 38:
+                                if (isPlainObject(v)) {
+                                  css.push(null, k.slice(1) + renderStyle(v, mark));
+                                }
+                                break;
+                              default:
+                                inline ??= {};
+                                inline[k] = v;
+                            }
+                          }
+                          if (css.length > 0) {
+                            classList.remove(...classList.values().filter(key => key.startsWith("css-")));
+                            if (inline) {
+                              css.unshift(null, renderStyle(inline));
+                            }
+                            classList.add(applyCSS(css));
+                          } else if (inline) {
+                            // todo: use `el.style[key] = value` instead of `el.style.cssText`
+                            el.style.cssText = renderStyle(inline).slice(1, -1);
+                          }
+                        } else if (isString(style)) {
+                          el.style.cssText = style;
+                        }
+                      };
                       update();
                       for (const reactive of mark) {
                         reactive.watch(update, abortSignal);
@@ -707,55 +758,6 @@ const cx = (className: unknown, mark?: Set<Reactive>): string => {
     ).join(" ");
   }
   return "";
-};
-
-const applyStyle = (el: HTMLElement, style: unknown, mark?: Set<Reactive>): void => {
-  style = $(style, mark);
-  if (isPlainObject(style)) {
-    let { classList } = el;
-    let inline: Record<string, unknown> | undefined;
-    let css: (string | null)[] = [];
-    classList.remove(...classList.values().filter(key => key.startsWith("css-")));
-    for (let [k, v] of Object.entries(style)) {
-      v = $(v, mark);
-      switch (k.charCodeAt(0)) {
-        case /* ':' */ 58:
-          if (isPlainObject(v)) {
-            css.push(k.startsWith("::view-") ? "" : null, k + renderStyle(v, mark));
-          }
-          break;
-        case /* '@' */ 64:
-          if (isPlainObject(v)) {
-            if (k.startsWith("@keyframes ")) {
-              css.push(k + "{" + Object.entries(v).map(([k, v]) => isPlainObject(v) ? k + renderStyle(v, mark) : "").join("") + "}");
-            } else if (k.startsWith("@view-")) {
-              css.push(k + renderStyle(v, mark));
-            } else {
-              css.push(k + "{", null, renderStyle(v, mark) + "}");
-            }
-          }
-          break;
-        case /* '&' */ 38:
-          if (isPlainObject(v)) {
-            css.push(null, k.slice(1) + renderStyle(v, mark));
-          }
-          break;
-        default:
-          inline ??= {};
-          inline[k] = v;
-      }
-    }
-    if (css.length > 0) {
-      if (inline) {
-        css.unshift(null, renderStyle(inline));
-      }
-      classList.add(createStyleElement(css));
-    } else if (inline) {
-      el.style.cssText = renderStyle(inline).slice(1, -1);
-    }
-  } else if (isString(style)) {
-    el.style.cssText = style;
-  }
 };
 
 export { atom, Reactive, render, store };
