@@ -11,11 +11,17 @@ interface IScope {
   readonly [$slots]: ChildType[] | undefined;
   readonly [$get]: (key: string) => unknown;
   readonly [$watch]: (key: string, effect: () => void) => () => void;
-  readonly [$expr]: (ok: boolean) => void;
+  readonly [$delegated]: (ok: boolean) => void;
   readonly atom: <T>(value: T) => Atom<T>;
   readonly store: <T = Record<string, unknown>>(props: T) => T;
   readonly init: (init: Record<string, unknown>) => void;
 }
+
+const $get = Symbol();
+const $watch = Symbol();
+const $delegated = Symbol();
+const $slots = Symbol();
+const orphanScopes = new Set<IScope>();
 
 abstract class Reactive {
   abstract get(): unknown;
@@ -139,24 +145,18 @@ class InsertMark {
   }
 }
 
-const globalScopes = new Set<IScope>();
-const $get = Symbol();
-const $watch = Symbol();
-const $expr = Symbol();
-const $slots = Symbol();
-
 let appScope: IScope | undefined;
 let atomIndex = 0;
 let depsMark: Set<Signal> | undefined;
 
 const createScope = (slots?: ChildType[], abortSignal?: AbortSignal): IScope => {
-  let exprMode = false;
+  let delegated = false;
   let watchHandlers = new Map<string, Set<() => void>>();
   let refElements = new Map<string, HTMLElement>();
   let signals = new Map<string, Signal>();
   let refs = new Proxy(new NullPrototypeObject(), {
     get(_, key: string) {
-      if (!exprMode || depsMark) {
+      if (!delegated || depsMark) {
         return refElements.get(key);
       }
       return new Ref(refElements, key);
@@ -177,8 +177,8 @@ const createScope = (slots?: ChildType[], abortSignal?: AbortSignal): IScope => 
             handlers.add(effect);
             return () => handlers.delete(effect);
           };
-        case $expr:
-          return (ok: boolean) => exprMode = ok;
+        case $delegated:
+          return (ok: boolean) => delegated = ok;
         case $slots:
           return slots;
         case "init":
@@ -238,7 +238,7 @@ const createScope = (slots?: ChildType[], abortSignal?: AbortSignal): IScope => 
           if (typeof key === "symbol" || isFunction(value)) {
             return value;
           }
-          const getRawValue = !exprMode || depsMark !== undefined;
+          const getRawValue = !delegated || depsMark !== undefined;
           if (value instanceof Reactive) {
             if (getRawValue) {
               if (value instanceof Signal) {
@@ -290,7 +290,7 @@ const atom = (value: unknown) => {
 
 const store = (props: Record<string, unknown>) => {
   const scope = createScope();
-  globalScopes.add(scope);
+  orphanScopes.add(scope);
   return scope.store(props);
 };
 
@@ -661,7 +661,7 @@ const renderFC = (fc: ComponentType, props: Record<string, unknown>, root: HTMLE
   let el: ReturnType<typeof fc>;
   let scope = createScope(props.children as ChildType[] | undefined, abortSignal) as unknown as IScope;
   let catchFn = props.catch as ((err: unknown) => VNode) | undefined;
-  setExpr(scope, true);
+  delegated(scope, true);
   try {
     el = fc.call(scope, props);
   } catch (err) {
@@ -681,7 +681,7 @@ const renderFC = (fc: ComponentType, props: Record<string, unknown>, root: HTMLE
     }
     root.append(...pendingNodes);
     el.then((nodes) => {
-      setExpr(scope, false);
+      delegated(scope, false);
       pendingNodes[0].replaceWith(...renderToFragment(scope, nodes as ChildType, abortSignal).childNodes);
     }).catch((err) => {
       if (!catchFn) {
@@ -689,12 +689,12 @@ const renderFC = (fc: ComponentType, props: Record<string, unknown>, root: HTMLE
       }
       pendingNodes[0].replaceWith(...renderToFragment(scope, catchFn(err) as ChildType, abortSignal).childNodes);
     }).finally(() => {
-      setExpr(scope, false);
+      delegated(scope, false);
       // remove pendingNodes elements
       pendingNodes.forEach(node => node.remove());
     });
   } else {
-    setExpr(scope, false);
+    delegated(scope, false);
     if (isPlainObject(el) && !isVNode(el)) {
       if (Symbol.asyncIterator in el) {
         //  todo: async generator
@@ -740,9 +740,9 @@ const $ = <T>(value: T, mark?: Set<Reactive>): T => {
   return value;
 };
 
-const setExpr = (scope: IScope, ok: boolean) => {
-  scope[$expr](ok);
-  globalScopes.forEach(s => s[$expr](ok));
+const delegated = (scope: IScope, ok: boolean) => {
+  scope[$delegated](ok);
+  orphanScopes.forEach(s => s[$delegated](ok));
 };
 
 const cx = (className: unknown, mark?: Set<Reactive>): string => {
