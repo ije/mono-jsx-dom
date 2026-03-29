@@ -44,6 +44,24 @@ async function App(this: FC<{ word: string }>) {
 document.body.mount(<App />);
 ```
 
+You can also define [custom elements](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements) with the `defineComponent` function:
+
+```tsx
+import { defineComponent } from "mono-jsx-dom";
+
+function App(this: FC<{ word: string }>) {
+  return <div>Hello, {this.word}!</div>;
+}
+
+defineComponent("my-app", App);
+```
+
+Then you can use the `<my-app>` element in your HTML.
+
+```html
+<my-app word="world"></my-app>
+```
+
 >[!TIP]
 > `mono-jsx-dom` is designed for client-side rendering. You can use [mono-jsx](https://github.com/ije/mono-jsx) to render the UI on the server side.
 

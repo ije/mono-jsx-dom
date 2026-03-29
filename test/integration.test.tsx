@@ -1075,6 +1075,47 @@ Deno.test("async component", sanitizeFalse, async () => {
   await page.close();
 });
 
+Deno.test("defineComponent", sanitizeFalse, async () => {
+  const testUrl = addTestPage(`
+    import { defineComponent } from "mono-jsx-dom";
+
+    window.cleanupCount = 0;
+
+    function Counter(this: FC<{ count: number }>, props: { label?: string, start?: string }) {
+      this.init({ count: Number(props.start ?? "0") });
+      this.effect(() => () => window.cleanupCount++);
+      return <button onClick={() => this.count++}>{props.label}: {this.count}</button>;
+    }
+
+    defineComponent("x-counter-test", Counter);
+
+    const host = document.createElement("x-counter-test");
+    host.setAttribute("label", "Clicks");
+    host.setAttribute("start", "3");
+    document.body.append(host);
+    window.host = host;
+  `);
+
+  const page = await browser.newPage();
+  await page.goto(testUrl);
+
+  let button = await page.$("body > x-counter-test > button");
+  assert(button);
+  assertEquals(await button.evaluate((el: HTMLButtonElement) => el.textContent), "Clicks: 3");
+
+  await button.click();
+  assertEquals(await button.evaluate((el: HTMLButtonElement) => el.textContent), "Clicks: 4");
+
+  await page.evaluate(() => (window as typeof window & { host: HTMLElement }).host.remove());
+
+  button = await page.$("body > x-counter-test > button");
+  assert(!button);
+  assertEquals(await page.evaluate(() => (window as typeof window & { cleanupCount: number }).cleanupCount), 1);
+  assertEquals(await page.evaluate(() => (window as typeof window & { host: HTMLElement }).host.childElementCount), 0);
+
+  await page.close();
+});
+
 Deno.test("XSS", sanitizeFalse, async (t) => {
   await t.step("static html", async () => {
     const testUrl = addTestPage(`
