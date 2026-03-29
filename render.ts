@@ -294,7 +294,7 @@ const store = (props: Record<string, unknown>) => {
   return scope.store(props);
 };
 
-const render = (scope: IScope, child: ChildType, root: HTMLElement | DocumentFragment, abortSignal?: AbortSignal) => {
+const render = (scope: IScope, child: ChildType, root: HTMLElement | DocumentFragment | ShadowRoot, abortSignal?: AbortSignal) => {
   switch (typeof child) {
     case "boolean":
     case "undefined":

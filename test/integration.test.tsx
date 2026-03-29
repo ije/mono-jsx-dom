@@ -1116,6 +1116,83 @@ Deno.test("defineComponent", sanitizeFalse, async () => {
   await page.close();
 });
 
+Deno.test("defineComponent attachShadow", sanitizeFalse, async () => {
+  const testUrl = addTestPage(`
+    import { defineComponent } from "mono-jsx-dom";
+
+    window.cleanupCount = 0;
+    window.shadowRootRef = null;
+
+    const attachShadow = HTMLElement.prototype.attachShadow;
+    HTMLElement.prototype.attachShadow = function(init) {
+      const root = attachShadow.call(this, init);
+      if (this.tagName.toLowerCase() === "x-shadow-counter-test") {
+        window.shadowRootRef = root;
+      }
+      return root;
+    };
+
+    function Counter(this: FC<{ count: number }>, props: { label?: string, start?: string }) {
+      this.init({ count: Number(props.start ?? "0") });
+      this.effect(() => () => window.cleanupCount++);
+      return <button onClick={() => this.count++}>{props.label}: {this.count}</button>;
+    }
+
+    defineComponent("x-shadow-counter-test", Counter, true);
+
+    const host = document.createElement("x-shadow-counter-test");
+    host.setAttribute("label", "Shadow");
+    host.setAttribute("start", "7");
+    document.body.append(host);
+    window.host = host;
+  `);
+
+  const page = await browser.newPage();
+  await page.goto(testUrl);
+
+  assertEquals(
+    await page.evaluate(() => (window as typeof window & { shadowRootRef: ShadowRoot | null }).shadowRootRef?.textContent),
+    "Shadow: 7",
+  );
+  assert(
+    await page.evaluate(() => !!(window as typeof window & { host: HTMLElement }).host.shadowRoot),
+  );
+  assertEquals(
+    await page.evaluate(() =>
+      (window as typeof window & { host: HTMLElement; shadowRootRef: ShadowRoot | null }).host.shadowRoot ===
+        (window as typeof window & { host: HTMLElement; shadowRootRef: ShadowRoot | null }).shadowRootRef),
+    true,
+  );
+
+  await page.evaluate(() => {
+    const root = (window as typeof window & { shadowRootRef: ShadowRoot | null }).shadowRootRef;
+    const button = root?.querySelector("button");
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+
+  assertEquals(
+    await page.evaluate(() => (window as typeof window & { shadowRootRef: ShadowRoot | null }).shadowRootRef?.textContent),
+    "Shadow: 8",
+  );
+  assertEquals(
+    await page.evaluate(() => (window as typeof window & { host: HTMLElement }).host.childElementCount),
+    0,
+  );
+
+  await page.evaluate(() => (window as typeof window & { host: HTMLElement }).host.remove());
+
+  assertEquals(
+    await page.evaluate(() => (window as typeof window & { cleanupCount: number }).cleanupCount),
+    1,
+  );
+  assertEquals(
+    await page.evaluate(() => (window as typeof window & { shadowRootRef: ShadowRoot | null }).shadowRootRef?.childElementCount),
+    0,
+  );
+
+  await page.close();
+});
+
 Deno.test("XSS", sanitizeFalse, async (t) => {
   await t.step("static html", async () => {
     const testUrl = addTestPage(`

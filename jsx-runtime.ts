@@ -47,4 +47,4 @@ Object.assign(globalThis, {
   js: html,
 });
 
-export { atom, Fragment, html, html as css, html as js, JSX, jsx, jsx as jsxDEV, jsx as jsxs, store };
+export { atom, Fragment, html, html as css, html as js, JSX, jsx, jsx as jsxDEV, jsx as jsxs, render, store };
