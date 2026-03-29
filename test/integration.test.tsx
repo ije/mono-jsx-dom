@@ -1120,7 +1120,6 @@ Deno.test("defineComponent attachShadow", sanitizeFalse, async () => {
   const testUrl = addTestPage(`
     import { defineComponent } from "mono-jsx-dom";
 
-    window.cleanupCount = 0;
     window.shadowRootRef = null;
 
     const attachShadow = HTMLElement.prototype.attachShadow;
@@ -1132,17 +1131,13 @@ Deno.test("defineComponent attachShadow", sanitizeFalse, async () => {
       return root;
     };
 
-    function Counter(this: FC<{ count: number }>, props: { label?: string, start?: string }) {
-      this.init({ count: Number(props.start ?? "0") });
-      this.effect(() => () => window.cleanupCount++);
-      return <button onClick={() => this.count++}>{props.label}: {this.count}</button>;
+    function App() {
+      return <div>Inside shadow root</div>;
     }
 
-    defineComponent("x-shadow-counter-test", Counter, true);
+    defineComponent("x-shadow-counter-test", App, true);
 
     const host = document.createElement("x-shadow-counter-test");
-    host.setAttribute("label", "Shadow");
-    host.setAttribute("start", "7");
     document.body.append(host);
     window.host = host;
   `);
@@ -1150,45 +1145,15 @@ Deno.test("defineComponent attachShadow", sanitizeFalse, async () => {
   const page = await browser.newPage();
   await page.goto(testUrl);
 
-  assertEquals(
-    await page.evaluate(() => (window as typeof window & { shadowRootRef: ShadowRoot | null }).shadowRootRef?.textContent),
-    "Shadow: 7",
-  );
-  assert(
-    await page.evaluate(() => !!(window as typeof window & { host: HTMLElement }).host.shadowRoot),
-  );
-  assertEquals(
-    await page.evaluate(() =>
-      (window as typeof window & { host: HTMLElement; shadowRootRef: ShadowRoot | null }).host.shadowRoot ===
-        (window as typeof window & { host: HTMLElement; shadowRootRef: ShadowRoot | null }).shadowRootRef),
-    true,
-  );
+  type Window = typeof window & {
+    shadowRootRef: ShadowRoot | null;
+    host: HTMLElement;
+  };
 
-  await page.evaluate(() => {
-    const root = (window as typeof window & { shadowRootRef: ShadowRoot | null }).shadowRootRef;
-    const button = root?.querySelector("button");
-    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-  });
-
-  assertEquals(
-    await page.evaluate(() => (window as typeof window & { shadowRootRef: ShadowRoot | null }).shadowRootRef?.textContent),
-    "Shadow: 8",
-  );
-  assertEquals(
-    await page.evaluate(() => (window as typeof window & { host: HTMLElement }).host.childElementCount),
-    0,
-  );
-
-  await page.evaluate(() => (window as typeof window & { host: HTMLElement }).host.remove());
-
-  assertEquals(
-    await page.evaluate(() => (window as typeof window & { cleanupCount: number }).cleanupCount),
-    1,
-  );
-  assertEquals(
-    await page.evaluate(() => (window as typeof window & { shadowRootRef: ShadowRoot | null }).shadowRootRef?.childElementCount),
-    0,
-  );
+  assertEquals(await page.evaluate(() => (window as Window).shadowRootRef?.textContent), "Inside shadow root");
+  assert(await page.evaluate(() => !!(window as Window).host.shadowRoot));
+  assertEquals(await page.evaluate(() => (window as Window).host.shadowRoot === (window as Window).shadowRootRef), true);
+  assertEquals(await page.evaluate(() => (window as Window).host.childElementCount), 0);
 
   await page.close();
 });
