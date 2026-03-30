@@ -44,22 +44,25 @@ async function App(this: FC<{ word: string }>) {
 document.body.mount(<App />);
 ```
 
-You can also define [custom elements](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements) with the `defineComponent` function:
+You can also define a component as a [custom element](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements) with the `register` function:
 
 ```tsx
-import { defineComponent } from "mono-jsx-dom";
+// app.tsx
+
+import { register } from "mono-jsx-dom";
 
 function App(this: FC<{ word: string }>) {
   return <div>Hello, {this.word}!</div>;
 }
 
-defineComponent("my-app", App);
+register("my-app", App, { mode: "open", style: "div { color: black; }" });
 ```
 
-Then you can use the `<my-app>` element in your HTML.
+Then you can use the `<my-app>` element in your HTML:
 
 ```html
 <my-app word="world"></my-app>
+<script type="module" src="app.tsx"></script>
 ```
 
 >[!TIP]

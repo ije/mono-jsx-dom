@@ -1075,9 +1075,9 @@ Deno.test("async component", sanitizeFalse, async () => {
   await page.close();
 });
 
-Deno.test("defineComponent", sanitizeFalse, async () => {
+Deno.test("register custom element", sanitizeFalse, async () => {
   const testUrl = addTestPage(`
-    import { defineComponent } from "mono-jsx-dom";
+    import { register } from "mono-jsx-dom";
 
     window.cleanupCount = 0;
 
@@ -1087,7 +1087,7 @@ Deno.test("defineComponent", sanitizeFalse, async () => {
       return <button onClick={() => this.count++}>{props.label}: {this.count}</button>;
     }
 
-    defineComponent("x-counter-test", Counter);
+    register("x-counter-test", Counter);
 
     const host = document.createElement("x-counter-test");
     host.setAttribute("label", "Clicks");
@@ -1116,9 +1116,9 @@ Deno.test("defineComponent", sanitizeFalse, async () => {
   await page.close();
 });
 
-Deno.test("defineComponent attachShadow", sanitizeFalse, async () => {
+Deno.test("register custom element with shadow mode", sanitizeFalse, async () => {
   const testUrl = addTestPage(`
-    import { defineComponent } from "mono-jsx-dom";
+    import { register } from "mono-jsx-dom";
 
     window.shadowRootRef = null;
 
@@ -1135,7 +1135,15 @@ Deno.test("defineComponent attachShadow", sanitizeFalse, async () => {
       return <div>Inside shadow root</div>;
     }
 
-    defineComponent("x-shadow-counter-test", App, true);
+    register("x-shadow-counter-test", App, {
+      mode: "open",
+      style: "div { color: rgb(255, 0, 0); }",
+    });
+
+    const outside = document.createElement("div");
+    outside.textContent = "Outside shadow root";
+    document.body.append(outside);
+    window.outside = outside;
 
     const host = document.createElement("x-shadow-counter-test");
     document.body.append(host);
@@ -1148,11 +1156,24 @@ Deno.test("defineComponent attachShadow", sanitizeFalse, async () => {
   type Window = typeof window & {
     shadowRootRef: ShadowRoot | null;
     host: HTMLElement;
+    outside: HTMLDivElement;
   };
 
   assertEquals(await page.evaluate(() => (window as Window).shadowRootRef?.textContent), "Inside shadow root");
   assert(await page.evaluate(() => !!(window as Window).host.shadowRoot));
   assertEquals(await page.evaluate(() => (window as Window).host.shadowRoot === (window as Window).shadowRootRef), true);
+  assertEquals(await page.evaluate(() => (window as Window).host.shadowRoot?.adoptedStyleSheets.length), 1);
+  assertEquals(
+    await page.evaluate(() => {
+      const div = (window as Window).host.shadowRoot?.querySelector("div");
+      return div ? getComputedStyle(div).color : null;
+    }),
+    "rgb(255, 0, 0)",
+  );
+  assertEquals(
+    await page.evaluate(() => getComputedStyle((window as Window).outside).color),
+    "rgb(0, 0, 0)",
+  );
   assertEquals(await page.evaluate(() => (window as Window).host.childElementCount), 0);
 
   await page.close();

@@ -393,7 +393,7 @@ const render = (scope: IScope, child: ChildType, root: HTMLElement | DocumentFra
 
           // `<slot>` element
           case "slot": {
-            const slots = scope[$slots];
+            const slots = scope?.[$slots];
             if (slots) {
               renderChildren(scope, slots, root, abortSignal);
             }

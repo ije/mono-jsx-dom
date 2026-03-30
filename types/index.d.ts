@@ -13,4 +13,8 @@ export const store: <T extends Record<string, unknown>>(initValue: T) => T;
 /**
  * Defines a custom element with the given name and component.
  */
-export const defineComponent: (name: string, Component: ComponentType<any>, attachShadow?: boolean | { mode: "open" | "closed" }) => void;
+export const register: (
+  name: string,
+  Component: ComponentType<any>,
+  shadow?: boolean | { mode?: "open" | "closed"; style?: string },
+) => void;
