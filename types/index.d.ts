@@ -16,5 +16,5 @@ export const store: <T extends Record<string, unknown>>(initValue: T) => T;
 export const register: (
   name: string,
   Component: ComponentType<any>,
-  shadow?: boolean | { mode?: "open" | "closed"; style?: string },
+  shadow?: boolean | { mode?: "open" | "closed"; style?: string | CSSStyleSheet },
 ) => void;
