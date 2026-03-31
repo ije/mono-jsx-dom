@@ -1,12 +1,10 @@
 // based on https://github.com/remix-run/remix/tree/main/packages/node-fetch-server
 
+import type { ServeOptions } from "../types/node-fetch-server.d.ts";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 
-type Fetch = (request: Request) => Response | Promise<Response>;
-
-function createRequestListener(fetch: Fetch, options?: ServeOptions) {
-  const onError = options?.onError ?? defaultErrorHandler;
-  const idleTimeout = options?.idleTimeout;
+function createRequestListener(options: ServeOptions) {
+  const { fetch, onError = defaultErrorHandler, idleTimeout } = options;
   return async (req: IncomingMessage, res: ServerResponse) => {
     let response;
     if (idleTimeout !== undefined) {
@@ -125,19 +123,9 @@ async function sendResponse(res: ServerResponse, response: Response) {
   res.end();
 }
 
-export type ServeOptions = {
-  port?: number;
-  hostname?: string;
-  signal?: AbortSignal;
-  idleTimeout?: number;
-  fetch: (req: Request) => Response | Promise<Response>;
-  onListen?: (localAddress: { port: number }) => void;
-  onError?: (error: Error) => Response | Promise<Response>;
-};
-
 export function serve(options: ServeOptions): Promise<{ port: number }> {
-  const { port = getDefaultPort(), hostname, signal, fetch, onListen } = options;
-  const server = createServer(createRequestListener(fetch, options));
+  const { port = getDefaultPort(), hostname, signal, onListen } = options;
+  const server = createServer(createRequestListener(options));
   server.listen(port, options?.hostname, () => {
     if (onListen) {
       onListen({ port });

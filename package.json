@@ -36,6 +36,7 @@
       "import": "./server/index.mjs"
     },
     "./node-fetch-server": {
+      "types": "./types/node-fetch-server.d.ts",
       "node": "./server/node-fetch-server.mjs",
       "import": "./server/node-fetch-server.mjs"
     },
