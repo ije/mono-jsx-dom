@@ -3,7 +3,7 @@ import { atom, jsx, render, store } from "./jsx-runtime.mjs";
 
 export function register(
   name: string,
-  Component: ComponentType,
+  component: ComponentType,
   shadow?: boolean | { mode?: "open" | "closed"; style?: string | CSSStyleSheet },
 ) {
   customElements.define(
@@ -25,9 +25,9 @@ export function register(
             }
             shadowRoot.adoptedStyleSheets = [styleSheet as CSSStyleSheet];
           }
-          render(null, jsx(Component, props) as unknown as VNode, shadowRoot, this.#ac.signal);
+          render(null, jsx(component, props) as unknown as VNode, shadowRoot, this.#ac.signal);
         } else {
-          this.mount(jsx(Component, props) as unknown as VNode, this.#ac.signal);
+          this.mount(jsx(component, props) as unknown as VNode, this.#ac.signal);
         }
       }
       disconnectedCallback() {
