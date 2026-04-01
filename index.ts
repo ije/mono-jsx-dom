@@ -25,7 +25,7 @@ export function register(
             }
             shadowRoot.adoptedStyleSheets = [styleSheet as CSSStyleSheet];
           }
-          render(null as any, jsx(Component, props) as unknown as VNode, shadowRoot, this.#ac.signal);
+          render(null, jsx(Component, props) as unknown as VNode, shadowRoot, this.#ac.signal);
         } else {
           this.mount(jsx(Component, props) as unknown as VNode, this.#ac.signal);
         }

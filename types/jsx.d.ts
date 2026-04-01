@@ -116,7 +116,7 @@ declare global {
     interface HtmlCustomAttributes {}
     interface BuiltinElements {}
     interface CustomElements {}
-    interface Element extends VNode, Response {}
+    interface Element extends VNode {}
     interface IntrinsicAttributes extends BaseAttributes, AsyncComponentAttributes {}
     interface IntrinsicElements extends HTML.Elements, HTML.SVGElements, HTML.CustomElements, JSX.BuiltinElements, MonoBuiltinElements {}
   }

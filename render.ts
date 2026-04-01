@@ -294,7 +294,7 @@ const store = (props: Record<string, unknown>) => {
   return scope.store(props);
 };
 
-const render = (scope: IScope, child: ChildType, root: HTMLElement | DocumentFragment | ShadowRoot, abortSignal?: AbortSignal) => {
+const render = (scope: IScope | null, child: ChildType, root: HTMLElement | DocumentFragment | ShadowRoot, abortSignal?: AbortSignal) => {
   switch (typeof child) {
     case "boolean":
     case "undefined":
@@ -643,7 +643,7 @@ const render = (scope: IScope, child: ChildType, root: HTMLElement | DocumentFra
 };
 
 const renderChildren = (
-  scope: IScope,
+  scope: IScope | null,
   children: ChildType | ChildType[],
   root: HTMLElement | DocumentFragment,
   aboutSignal?: AbortSignal,
@@ -709,7 +709,7 @@ const renderFC = (fc: ComponentType, props: Record<string, unknown>, root: HTMLE
   }
 };
 
-const renderToFragment = (scope: IScope, node: ChildType | ChildType[], aboutSignal?: AbortSignal) => {
+const renderToFragment = (scope: IScope | null, node: ChildType | ChildType[], aboutSignal?: AbortSignal) => {
   const fragment = document.createDocumentFragment();
   renderChildren(scope, node, fragment, aboutSignal);
   return fragment;

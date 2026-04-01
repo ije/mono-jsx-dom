@@ -35,8 +35,8 @@ const html = (template: string | TemplateStringsArray, ...values: unknown[]): VN
 ];
 
 // inject mount method to HTMLElement prototype
-HTMLElement.prototype.mount = function(node: VNode, aboutSignal?: AbortSignal) {
-  render(null as any, node as JSX.Element, this, aboutSignal);
+HTMLElement.prototype.mount = function(node: JSX.Element, aboutSignal?: AbortSignal) {
+  render(null, node, this, aboutSignal);
 };
 
 // inject global variables
