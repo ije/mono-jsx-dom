@@ -4,7 +4,7 @@ export const html: JSX.Raw;
 export const JSX: typeof globalThis.JSX;
 export const Fragment: (props: {}) => VNode;
 export const jsx: (tag: string | ComponentType, props: Record<string, unknown>, key?: string | number) => VNode;
-export const render: (scope: null, node: VNode, container: HTMLElement, aboutSignal?: AbortSignal) => void;
+export const render: (scope: null, node: VNode, container: HTMLElement | DocumentFragment | ShadowRoot, aboutSignal?: AbortSignal) => void;
 
 // aliases
 export { html as css, html as js, jsx as jsxDEV, jsx as jsxs };
