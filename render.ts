@@ -25,8 +25,8 @@ const orphanScopes = new Set<IScope>();
 
 abstract class Reactive {
   abstract get(): unknown;
-  abstract watch(callback: () => void, abortSignal: AbortSignal | undefined): void;
-  reactive(effect: (value: unknown) => void, abortSignal: AbortSignal | undefined) {
+  abstract watch(callback: () => void, abortSignal?: AbortSignal): void;
+  reactive(effect: (value: unknown) => void, abortSignal?: AbortSignal) {
     const update = () => effect(this.get());
     // collect dependencies first
     update();
@@ -63,7 +63,7 @@ class Signal extends Reactive {
     }
     this.#scope[this.#key] = value;
   }
-  watch(callback: () => void, abortSignal: AbortSignal | undefined) {
+  watch(callback: () => void, abortSignal?: AbortSignal) {
     onAbort(abortSignal, this.#scope[$watch](this.#key, callback));
   }
   ref(callback?: (value: unknown) => unknown) {
@@ -97,7 +97,7 @@ class Computed extends Reactive {
     }
     return value;
   }
-  watch(callback: () => void, abortSignal: AbortSignal | undefined) {
+  watch(callback: () => void, abortSignal?: AbortSignal) {
     this.#deps?.forEach(dep => dep.watch(callback, abortSignal));
   }
 }

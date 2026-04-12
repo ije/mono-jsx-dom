@@ -97,11 +97,21 @@ export interface MonoBuiltinElements {
 }
 
 export interface Atom<T> {
+  /** Read the current value. */
   get(): T;
-  set(value: T | ((prev: T) => T)): void;
-  map(callback: (value: T extends (infer V)[] ? V : T, index: number) => ChildPrimitiveType): ChildPrimitiveType[];
+  /** Assign a new value or compute one from the previous value. */
+  set(value: T): void;
+  set(fn: (value: T) => T): void;
+  /** When `T` is an array, map each item to a child for list rendering. */
+  map(
+    callback: (value: T extends (infer V)[] ? V : T, index: number) => ChildPrimitiveType,
+  ): ChildPrimitiveType[];
+  /** Create signal ref to the atom. */
   ref(): T;
+  /** Derived reactive value from the atom. */
   ref<V>(callback: (value: T) => V): V;
+  /** Run `callback` when the atom changes; pass `signal` to tie lifetime to an `AbortSignal`. */
+  watch(callback: () => void, signal?: AbortSignal): void;
 }
 
 declare global {

@@ -382,84 +382,129 @@ function Counter(this: FC<{ count: number }>, props: { initialCount?: number }) 
 }
 ```
 
-You can use `this.store` to create a signal store. You can use getters to create derived (computed) signals.
+### Atom signals
+
+Call `this.atom(initialValue)` inside a component to get a reactive atom tied to that instance. It updates the view when you call `set`, and you can read the current value with `get` (for example in `effect` callbacks).
 
 ```tsx
-function App(this: FC<{ count: number }>) {
-  const counter = this.store({
-    value: 0,
-    // double is a derived(computed) signal
-    get double() {
-      return this.value * 2;
-    }
+function Counter(this: FC) {
+  const count = this.atom(0);
+  this.effect(() => {
+    console.log("count changed:", count.get());
   });
-
   return (
     <div>
-      <span>count:{counter.value}</span>
-      <span>double: {counter.double}</span>
-      <button onClick={() => counter.value++}>+</button>
+      <span>{count}</span>
+      <button onClick={() => count.set((prev) => prev + 1)}>Increment</button>
     </div>
-  )
+  );
 }
 ```
 
-### Using `atom` and `store`
-
-mono-jsx-dom provides two functions that allow you to define shared global signals. You can use them to share signals between components.
-
-- `atom(initValue)`: Creates an atom signal.
-- `store(initValue)`: Creates a signal store.
-
-```ts
-export interface Atom<T> {
-  get(): T;
-  set(value: T | ((prev: T) => T)): void;
-  map(callback: (value: T extends (infer V)[] ? V : T, index: number) => JSX.ChildPrimitiveType): JSX.ChildPrimitiveType[];
-  ref(): T;
-  ref<V>(callback: (value: T) => V): V;
-}
-
-export const atom: <T>(initValue: T) => Atom<T>;
-export const store: <T extends Record<string, unknown>>(initValue: T) => T;
-```
-
-Example:
+For state shared across the whole app (or a module), import `atom` and define it at the top level. Any component that reads that atom in JSX or effects stays in sync.
 
 ```tsx
-import { atom, store } from "mono-jsx-dom";
+import { atom } from "mono-jsx-dom";
 
 const count = atom(0);
-const store = store({ text: 'Count:' });
+const double = count.ref((value) => value * 2);
 
 function Counter(this: FC) {
   this.effect(() => {
     console.log("count changed:", count.get());
   });
   return (
-   <span>{store.text}{count}</span>
-  )
-}
-
-function Buttons(this: FC) {
-  return (
-    <>
-      <button onClick={() => count.set(prev => prev+1)}>+</button>
-      <button onClick={() => store.text = store.text === 'Count:' ? 'Count:' : '计数:'}>English/中文</button>
-    </>
-  )
+    <div>
+      <p>count: {count}</p>
+      <p>double: {double}</p>
+    </div>
+  );
 }
 
 function App(this: FC) {
   return (
-    <>
+    <div>
       <Counter />
-      <Buttons />
-    </>
-  )
+      <button onClick={() => count.set((prev) => prev + 1)}>Increment</button>
+    </div>
+  );
+}
+```
+
+The type of atom signals is defined as follows:
+
+```ts
+export interface Atom<T> {
+  /** Read the current value. */
+  get(): T;
+  /** Assign a new value or compute one from the previous value. */
+  set(value: T): void;
+  set(fn: (value: T) => T): void;
+  /** When `T` is an array, map each item to a child for list rendering. */
+  map(
+    callback: (value: T extends (infer V)[] ? V : T, index: number) => ChildPrimitiveType,
+  ): ChildPrimitiveType[];
+  /** Create signal ref to the atom. */
+  ref(): T;
+  /** Derived reactive value from the atom. */
+  ref<V>(callback: (value: T) => V): V;
+  /** Run `callback` when the atom changes; pass `signal` to tie lifetime to an `AbortSignal`. */
+  watch(callback: () => void, signal?: AbortSignal): void;
+}
+```
+
+### Signal stores
+
+The `this.store({ ... })` method in a component builds a reactive object: plain fields are signals, and getters become derived signals.
+
+```tsx
+function App(this: FC) {
+  const counter = this.store({
+    value: 0,
+    get double() {
+      return this.value * 2;
+    },
+  });
+
+  return (
+    <div>
+      <span>count: {counter.value}</span>
+      <span>double: {counter.double}</span>
+      <button onClick={() => counter.value++}>+</button>
+    </div>
+  );
+}
+```
+
+You can also use the `store` function to create a global signal store. Like `atom` function, the global signals store is shared between all components.
+
+```tsx
+import { store } from "mono-jsx-dom";
+
+const counter = store({
+  value: 0,
+  get double() {
+    return this.value * 2;
+  },
+});
+
+function Counter(this: FC) {
+  return (
+    <div>
+      <span>{counter.value}</span>
+      <span>{counter.double}</span>
+    </div>
+  );
 }
 
-document.body.mount(<App />);
+function App(this: FC) {
+  return (
+    <div>
+      <Counter />
+      <button onClick={() => counter.value++}>Increment</button>
+    </div>
+  );
+}
 ```
 
 ### Using Computed Signals
